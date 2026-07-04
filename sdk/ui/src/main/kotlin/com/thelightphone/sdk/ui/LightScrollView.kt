@@ -335,7 +335,16 @@ private fun LightScrollBar(
 @Composable
 private fun PreviewLightScrollViewDark() {
     LightTheme(colors = LightThemeColors.Dark) {
-        LightScrollView(modifier = Modifier.fillMaxSize()) {
+        LightScrollView(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = LightThemeTokens.colors.background)
+                .padding(
+                    top = 1f.gridUnitsAsDp(),
+                    start = 1f.gridUnitsAsDp(),
+                    bottom = 1f.gridUnitsAsDp(),
+                ),
+            ) {
             repeat(24) { index ->
                 LightText(
                     text = "Scrollable row ${index + 1}",
