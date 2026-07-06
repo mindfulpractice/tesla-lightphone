@@ -14,6 +14,7 @@ android {
 
     defaultConfig {
         minSdk = rootProject.ext["minSdk"] as Int
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     compileOptions {
