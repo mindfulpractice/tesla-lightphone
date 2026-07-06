@@ -67,7 +67,7 @@ private data class LightScrollBarGeometry(
     val thumbOffsetPx = contentScrollFraction * maxThumbOffsetPx
 
     fun containsTouchX(xPx: Float): Boolean =
-        xPx >= touchLeftPx && xPx <= touchRightPx
+        xPx in touchLeftPx..touchRightPx
 
     fun containsThumb(xPx: Float, yPx: Float): Boolean =
         containsTouchX(xPx) &&
@@ -88,6 +88,7 @@ fun LightScrollView(
 ) {
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+    val scrollOffsetPx by remember { derivedStateOf { scrollState.value.toFloat() } }
     val showScrollBar = scrollState.maxValue > 0
     val contentPaddingEnd = when {
         !showScrollBar -> 0f
@@ -105,7 +106,7 @@ fun LightScrollView(
             )
             if (showScrollBar) {
                 LightScrollBar(
-                    contentScrollOffsetPx = scrollState.value.toFloat(),
+                    contentScrollOffsetPx = scrollOffsetPx,
                     maxContentScrollOffsetPx = scrollState.maxValue.toFloat(),
                     onScrollTo = { target ->
                         scope.launch { scrollState.scrollTo(target.roundToInt()) }
@@ -131,7 +132,7 @@ fun LightScrollView(
             )
             if (showScrollBar) {
                 LightScrollBar(
-                    contentScrollOffsetPx = scrollState.value.toFloat(),
+                    contentScrollOffsetPx = scrollOffsetPx,
                     maxContentScrollOffsetPx = scrollState.maxValue.toFloat(),
                     onScrollTo = { target ->
                         scope.launch { scrollState.scrollTo(target.roundToInt()) }
@@ -243,7 +244,7 @@ private fun LightScrollBar(
     val trackWidth = SCROLLBAR_WIDTH_UNITS.gridUnitsAsDp()
     val railWidth = 1.dp
     val thumbWidth = 5.dp
-    val touchWidth = thumbWidth * 5
+    val touchWidth = thumbWidth * 6
 
     BoxWithConstraints(
         modifier = modifier.width(trackWidth),
