@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,9 +48,17 @@ fun LightTextInputEditor(
     submitLabel: String = "SUBMIT",
     submitIcon: LightIconConfiguration? = null,
     showBackButton: Boolean = true,
+    singleLine: Boolean = false,
     editorKey: Any = title,
 ) {
-    val keyboardCallback = remember(state) { TextInputKeyboardCallback(state) }
+    val currentOnSubmit by rememberUpdatedState(onSubmit)
+    val keyboardCallback = remember(state, singleLine) {
+        TextInputKeyboardCallback(
+            state = state,
+            singleLine = singleLine,
+            onReturn = { currentOnSubmit(state.text) },
+        )
+    }
 
     val keyboardViewModel: Lp3KeyboardViewModel = viewModel<DefaultLp3KeyboardViewModel>(
         key = "LightTextInputEditor-$editorKey",
@@ -66,6 +75,7 @@ fun LightTextInputEditor(
         submitLabel,
         submitIcon,
         showBackButton,
+        singleLine,
     )
 }
 
@@ -87,6 +97,7 @@ fun LightTextInputEditor(
     submitLabel: String = "SUBMIT",
     submitIcon: LightIconConfiguration? = null,
     showBackButton: Boolean = true,
+    singleLine: Boolean = false,
 ) {
     val colors = LightThemeTokens.colors
     val inputStyle = lightInputTextStyle()
@@ -138,6 +149,8 @@ fun LightTextInputEditor(
                     text = state.text.toString(),
                     style = inputStyle,
                     onTextLayout = { textLayout = it },
+                    maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+                    softWrap = !singleLine,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 textLayout?.let { layout ->
