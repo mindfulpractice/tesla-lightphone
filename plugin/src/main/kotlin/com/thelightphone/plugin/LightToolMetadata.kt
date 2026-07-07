@@ -139,6 +139,7 @@ object LightToolPolicy {
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_AUDIO",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.NFC",

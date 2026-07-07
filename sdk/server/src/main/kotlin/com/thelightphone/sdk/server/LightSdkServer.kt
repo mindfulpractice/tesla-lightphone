@@ -143,8 +143,11 @@ object LightSdkServer {
      * Settable from enclosing application!! May be run on any thread
      */
     var androidPermissionAllowed: (callingUid: Int, permissionName: String) -> Boolean = { _, permissionName ->
-        // default, only allow camera for now
-        setOf(Manifest.permission.CAMERA).contains(permissionName)
+        // default grantable permissions; enclosing app may override
+        setOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.READ_MEDIA_AUDIO,
+        ).contains(permissionName)
     }
 
     var permissionActivity: Class<out Activity>? = null
