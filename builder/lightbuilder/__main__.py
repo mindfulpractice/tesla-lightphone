@@ -23,6 +23,7 @@ import argparse
 import json
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 from . import extract, recipe
@@ -48,7 +49,38 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         ) + "\n",
         encoding="utf-8",
     )
+    _write_source_zip(
+        args.output_dir / "extracted-source.zip",
+        tool_root=args.workspace_tool,
+        report=report,
+    )
     return 0
+
+
+def _write_source_zip(
+    zip_path: Path,
+    *,
+    tool_root: Path,
+    report: extract.ExtractionReport,
+) -> None:
+    """Bundle the exact files the extractor accepted into a zip.
+
+    Contents mirror the staged tool module layout (build.gradle.kts,
+    lighttool.toml, src/main/**), so the zip is a faithful copy of the source
+    that fed gradle — nothing more, nothing less than what extraction.json
+    lists. Written deterministically (sorted entries, fixed timestamp/mode) so
+    two builds of the same commit produce a byte-identical archive.
+    """
+    entries = sorted(
+        (dest.relative_to(tool_root).as_posix(), dest)
+        for dest in report.dest_paths
+    )
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        for arcname, dest in entries:
+            info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            zf.writestr(info, dest.read_bytes())
 
 
 def cmd_collect(args: argparse.Namespace) -> int:

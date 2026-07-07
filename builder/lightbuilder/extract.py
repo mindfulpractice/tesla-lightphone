@@ -44,10 +44,15 @@ class ExtractionError(Exception):
 class ExtractionReport:
     files_copied: list[str] = field(default_factory=list)
     bytes_copied: int = 0
+    # Absolute paths of the copies inside the workspace tool module, in the
+    # order they were written. Used to build the extracted-source zip; not
+    # serialized into extraction.json/recipe.json.
+    dest_paths: list[Path] = field(default_factory=list)
 
-    def record(self, rel_path: str, size: int) -> None:
+    def record(self, rel_path: str, size: int, dest: Path) -> None:
         self.files_copied.append(rel_path)
         self.bytes_copied += size
+        self.dest_paths.append(dest)
 
 
 def extract(
@@ -60,11 +65,11 @@ def extract(
 
     The dest tool/ is the baked-in SDK's tool/ module; we overwrite per-build.
     ``tool_subpath`` defaults to ``tool`` to match the SDK's own layout, but
-    devs who don't want to mirror the SDK structure can point us at any
+    devs who don't want to mirror the SDK structure can point to any
     relative path inside their repo (including ``.`` for the repo root).
 
     Returns a report listing every file that made it across. Raises
-    ``ExtractionError`` on any policy violation — fail closed.
+    ``ExtractionError`` on any policy violation.
     """
     dev_repo = dev_repo.resolve(strict=True)
 
@@ -89,10 +94,8 @@ def extract(
 
     report = ExtractionReport()
 
-    # 1. Top-level files inside tool/ (build.gradle.kts, lighttool.toml).
     _copy_tool_root_files(src_tool=src_tool, dest_tool=dest_tool, report=report)
 
-    # 2. Source/resource/asset trees under tool/src/main.
     for subdir, allowed_exts in EXTRACTION_TREES.items():
         src_tree = src_main / subdir
         if not src_tree.exists():
@@ -116,15 +119,14 @@ def _copy_tool_root_files(
     dest_tool: Path,
     report: ExtractionReport,
 ) -> None:
-    # Whitelist by exact filename. Do not descend; only direct children of
+    # Allowlist by exact filename. Do not descend; only direct children of
     # tool/ are considered. Mandatory files are checked here too.
     seen: set[str] = set()
     for entry in src_tool.iterdir():
         if entry.is_dir():
             continue
         if entry.name not in ALLOWED_TOOL_ROOT_FILES:
-            # Quietly ignore stray files (.gitignore, .DS_Store, etc.) rather
-            # than failing; the dev didn't necessarily put them there.
+            # Quietly ignore stray files (.gitignore, .DS_Store, etc.)
             continue
         _validate_regular_file(entry, src_tool)
         size = entry.stat().st_size
@@ -139,7 +141,7 @@ def _copy_tool_root_files(
         # preserve the dest's existing mtime, leaking determinism state.
         shutil.copyfile(entry, dest)
         os.chmod(dest, 0o644)
-        report.record(entry.name, size)
+        report.record(entry.name, size, dest)
         seen.add(entry.name)
 
     for required in ("build.gradle.kts", "lighttool.toml"):
@@ -148,11 +150,7 @@ def _copy_tool_root_files(
 
 
 def _scan_build_script(path: Path) -> None:
-    """Refuse obviously-malicious build scripts before gradle parses them.
-
-    The SDK's gradle plugin enforces the same rules from inside gradle, but
-    by then the script has already executed. This pre-flight check catches
-    the plain-text-visible cases up-front.
+    """Refuse probably-malicious build scripts before gradle parses them.
     """
     content = path.read_text(encoding="utf-8", errors="strict")
     stripped = _strip_kotlin_comments(content)
@@ -237,7 +235,7 @@ def _copy_one(
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(entry, dst)
     os.chmod(dst, 0o644)
-    report.record(f"{src_tree.name}/{rel}", size)
+    report.record(f"{src_tree.name}/{rel}", size, dst)
 
 
 def _validate_regular_file(entry: Path, scope_root: Path) -> None:

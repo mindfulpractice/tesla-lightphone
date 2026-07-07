@@ -1,12 +1,9 @@
 """Allowlists and validation regexes.
 
 Centralized so policy changes happen in one place and tests can import the
-same constants the runtime uses. Whitelist (never blacklist) for anything the
-dev controls — adding a new file type means an explicit edit here.
-
-Note: app metadata validation (applicationId, versionCode, permission list,
-manifest contents) lives in the Kotlin Gradle plugin now, not here. This
-file only governs which files we are willing to copy from the dev's repo.
+same constants the runtime uses. App metadata validation (applicationId, versionCode, permission list,
+manifest contents) lives in the Kotlin Gradle plugin. This
+file only governs which files are to be copied from the dev's repo.
 """
 
 from __future__ import annotations

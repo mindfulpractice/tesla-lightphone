@@ -1,6 +1,7 @@
+# Disclaimer: an LLM was used to generate much of this file (because it wasn't fun to write!)
 # syntax=docker/dockerfile:1.6
 #
-# Builder image for Light SDK apps.
+# Builder image for Light SDK tools.
 #
 # The image bakes in a pinned commit of the Light SDK and a pre-warmed Gradle
 # dependency cache. At runtime the container runs strictly --offline and
@@ -28,7 +29,7 @@
 # Runtime:
 #   docker run --rm --network=none \
 #     -v /tmp/out:/out lightphone/light-builder:<tag> \
-#     --git-url https://github.com/dev/their-app \
+#     --git-url https://github.com/dev/their-tool \
 #     --git-ref <commit-sha> \
 #     --output-dir /out
 #
@@ -116,8 +117,10 @@ FROM --platform=linux/amd64 sdk AS warm
 RUN --mount=type=secret,id=github_token,uid=0,mode=0400,target=/run/secrets/gh_token \
     --mount=type=secret,id=gh_packages_user,uid=0,mode=0400,target=/run/secrets/gh_user \
     set -eux; \
+    set +x; \
     export GH_PACKAGES_TOKEN="$(cat /run/secrets/gh_token 2>/dev/null || true)"; \
     export GH_PACKAGES_USER="$(cat /run/secrets/gh_user 2>/dev/null || true)"; \
+    set -x; \
     cd /opt/light-sdk; \
     ./gradlew :tool:assembleRelease --no-daemon --stacktrace; \
     # Drop build outputs but keep the populated dep cache.

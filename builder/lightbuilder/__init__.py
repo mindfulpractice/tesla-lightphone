@@ -1,4 +1,4 @@
-"""Light SDK app builder.
+"""Light SDK tool builder.
 
 Takes a developer's git ref, extracts an allowlisted subset of files into a
 clean, baked-in copy of the SDK, and produces an unsigned APK plus a recipe

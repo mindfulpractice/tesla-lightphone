@@ -1,13 +1,7 @@
 """Emit a ``recipe.json`` capturing every input that fed into the unsigned APK.
 
-The recipe is the authoritative description of *what was built*. Pair it with
-the SHA-256 of the unsigned APK and you have everything an independent
-verifier needs to rebuild the same bytes — or to catch the build pipeline
-producing different ones.
-
-Crucially, the orchestrator (Oban worker) later cross-references this hash
-against what the signer pulls from the artifact bucket, so the recipe is
-also the gate that prevents a tampered artifact from being signed.
+The recipe is the authoritative description of what was built. Pair it with
+the SHA-256 of the unsigned APK to verify a build.
 """
 
 from __future__ import annotations

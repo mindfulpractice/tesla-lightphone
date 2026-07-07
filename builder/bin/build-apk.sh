@@ -21,9 +21,10 @@
 # network.
 #
 # On success, ${OUTPUT_DIR} contains:
-#   app-unsigned.apk      — the unsigned APK
+#   tool-unsigned.apk     — the unsigned APK
 #   recipe.json           — sha256 + every input that fed the build
 #   extraction.json       — list of files we accepted from the dev's repo
+#   extracted-source.zip  — the accepted source files, exactly as staged
 #   build.log             — full gradle stdout/stderr
 #
 # On failure, error.json or a non-zero exit explains why. The orchestrator

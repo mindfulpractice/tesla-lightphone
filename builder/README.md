@@ -21,7 +21,7 @@ module. They will look like:
 | `tool/src/main/kotlin/**/*.kt`            | Tool source                                            |
 | `tool/src/main/res/**`, `assets/**`       | Resources and assets                                   |
 
-Reminder that tool devs should **not** write `AndroidManifest.xml` — the plugin generates it from
+Reminder that you should **not** write/change `AndroidManifest.xml` — the plugin generates it from
 `lighttool.toml` at every Gradle build (locally and on the server). The
 plugin also rejects setting `applicationId`, `versionCode`, `versionName`,
 or `namespace` in `build.gradle.kts`.
@@ -55,12 +55,13 @@ or `namespace` in `build.gradle.kts`.
                                   │   clears signingConfig for an unsigned
                                   │       artifact, validates banlist)
                                   ▼
-                          ┌────────────────┐
-                          │ unsigned APK   │
-                          │ recipe.json    │
-                          │ extraction.json│
-                          │ build.log      │
-                          └────────────────┘
+                          ┌──────────────────────┐
+                          │ unsigned APK         │
+                          │ recipe.json          │
+                          │ extraction.json      │
+                          │ extracted-source.zip │
+                          │ build.log            │
+                          └──────────────────────┘
 ```
 
 The Gradle build runs `--offline`. All dependencies are warmed into the
@@ -151,8 +152,9 @@ bind-mounts the working tree in, you can run with `--network=none`.
 
 ### Bind-mount permissions
 
-The container runs as a non-root `builder` user (uid 1000). The `--output-dir`
-mount point must be writable by uid 1000. In production the orchestrator
+The container runs as a non-root `builder` user (uid 1001 — the temurin base
+image already occupies 1000). The `--output-dir` mount point must be writable
+by uid 1001. In production the orchestrator
 creates the per-build output dir with that ownership; for local testing the
 simplest answer is `chmod 777` on the host dir before `docker run`.
 
@@ -165,6 +167,7 @@ Inside `--output-dir`:
 | `tool-unsigned.apk` | The build artifact.                                                 |
 | `recipe.json`    | SHA-256 + every input that fed the build. The signing job must verify the dev-commit hash against this before signing. |
 | `extraction.json`| List of files the extractor accepted from the dev's repo.              |
+| `extracted-source.zip` | The accepted source files themselves, zipped exactly as staged into the tool module (`build.gradle.kts`, `lighttool.toml`, `src/main/**`). Deterministic archive — same commit produces a byte-identical zip. |
 | `build.log`      | Gradle stdout/stderr, plus the extractor's log.                        |
 | `error.json`     | Present only on policy-violation failure; describes why.               |
 
