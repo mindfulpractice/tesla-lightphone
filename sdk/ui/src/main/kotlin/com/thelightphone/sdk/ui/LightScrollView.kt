@@ -80,6 +80,14 @@ private data class LightScrollBarGeometry(
     }
 }
 
+fun scrollBarGutterUnits(position: LightScrollBarPosition): Float = when (position) {
+    LightScrollBarPosition.Outside -> SCROLLBAR_WIDTH_UNITS
+    LightScrollBarPosition.Inside -> 0f
+}
+
+fun scrollViewContentWidthUnits(totalWidthUnits: Float, position: LightScrollBarPosition): Float =
+    totalWidthUnits - scrollBarGutterUnits(position)
+
 @Composable
 fun LightScrollView(
     modifier: Modifier = Modifier,
@@ -90,56 +98,33 @@ fun LightScrollView(
     val scope = rememberCoroutineScope()
     val scrollOffsetPx by remember { derivedStateOf { scrollState.value.toFloat() } }
     val showScrollBar = scrollState.maxValue > 0
-    val contentPaddingEnd = when {
-        !showScrollBar -> 0f
-        scrollBarPosition == LightScrollBarPosition.Outside -> SCROLLBAR_WIDTH_UNITS
-        else -> 0f
-    }
+    val contentPaddingEnd = scrollBarGutterUnits(scrollBarPosition)
 
-    if (scrollBarPosition == LightScrollBarPosition.Inside) {
-        Box(modifier = modifier) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState),
-                content = content,
-            )
-            if (showScrollBar) {
-                LightScrollBar(
-                    contentScrollOffsetPx = scrollOffsetPx,
-                    maxContentScrollOffsetPx = scrollState.maxValue.toFloat(),
-                    onScrollTo = { target ->
-                        scope.launch { scrollState.scrollTo(target.roundToInt()) }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight()
-                        .padding(
-                            vertical = SCROLLBAR_INSIDE_VERTICAL_PADDING_UNITS.gridUnitsAsDp(),
-                        ),
-                )
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = contentPaddingEnd.gridUnitsAsDp())
+                .verticalScroll(scrollState),
+            content = content,
+        )
+        if (showScrollBar) {
+            val verticalPadding = if (scrollBarPosition == LightScrollBarPosition.Inside) {
+                SCROLLBAR_INSIDE_VERTICAL_PADDING_UNITS.gridUnitsAsDp()
+            } else {
+                0.dp
             }
-        }
-    } else {
-        Row(modifier = modifier) {
-            Column(
+            LightScrollBar(
+                contentScrollOffsetPx = scrollOffsetPx,
+                maxContentScrollOffsetPx = scrollState.maxValue.toFloat(),
+                onScrollTo = { target ->
+                    scope.launch { scrollState.scrollTo(target.roundToInt()) }
+                },
                 modifier = Modifier
-                    .weight(1f)
+                    .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .padding(end = contentPaddingEnd.gridUnitsAsDp())
-                    .verticalScroll(scrollState),
-                content = content,
+                    .padding(vertical = verticalPadding),
             )
-            if (showScrollBar) {
-                LightScrollBar(
-                    contentScrollOffsetPx = scrollOffsetPx,
-                    maxContentScrollOffsetPx = scrollState.maxValue.toFloat(),
-                    onScrollTo = { target ->
-                        scope.launch { scrollState.scrollTo(target.roundToInt()) }
-                    },
-                    modifier = Modifier.fillMaxHeight(),
-                )
-            }
         }
     }
 }

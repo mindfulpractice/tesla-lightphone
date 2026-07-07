@@ -62,4 +62,5 @@ dependencies {
     api(libs.compose.runtime)
     debugApi(libs.compose.ui.tooling)
     api(libs.compose.ui.tooling.preview)
+    testImplementation(libs.kotlin.test)
 }
