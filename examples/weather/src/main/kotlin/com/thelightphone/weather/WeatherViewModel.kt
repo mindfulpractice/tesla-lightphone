@@ -350,6 +350,14 @@ class WeatherViewModel(
         }
     }
 
+    fun showDay(index: Int) {
+        val state = _uiState.value
+        val weekly = state.mode as? WeatherScreenMode.Weekly ?: return
+        if (index < 0 || index >= weekly.days.size) return
+        lastSelectedDayIndex = index
+        restoreWeatherScreen(selectedDayIndex = index)
+    }
+
     fun openHourly() {
         _uiState.update { state ->
             val weather = state.mode as? WeatherScreenMode.Weather ?: return@update state

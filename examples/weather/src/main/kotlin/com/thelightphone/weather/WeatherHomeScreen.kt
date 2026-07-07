@@ -120,6 +120,7 @@ class WeatherHomeScreen(sealedActivity: SealedLightActivity) :
                             locationName = mode.locationName,
                             days = mode.days,
                             temperatureUnit = state.temperatureUnit,
+                            onSelectDay = viewModel::showDay,
                             onGoToToday = viewModel::goToToday,
                             onOpenSettings = viewModel::openSettings,
                         )
@@ -457,6 +458,7 @@ private fun WeeklyForecastContent(
     locationName: String,
     days: List<WeeklyDay>,
     temperatureUnit: TemperatureUnit,
+    onSelectDay: (Int) -> Unit,
     onGoToToday: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -472,12 +474,19 @@ private fun WeeklyForecastContent(
                 .fillMaxWidth()
                 .padding(start = 1f.gridUnitsAsDp()),
         ) {
-            days.forEach { day ->
+            days.forEachIndexed { index, day ->
                 Column(
-                    modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .lightClickable(onClick = { onSelectDay(index) })
+                        .padding(bottom = 1f.gridUnitsAsDp()),
                 ) {
                     WeatherBoldLine(formatDailyTitle(day.date))
-                    WeatherLine(formatWeeklySummaryLine(day, temperatureUnit))
+                    WeatherLine(formatWeeklyHighLowLine(day, temperatureUnit))
+                    WeatherDetailLine(
+                        label = "Precipitation",
+                        value = formatWeeklyPrecipitationDetail(day, temperatureUnit),
+                    )
                     WeatherLine(day.weatherDescription)
                 }
             }
@@ -548,7 +557,6 @@ private fun SelectSettingRow(
         LightText(
             text = label,
             variant = LightTextVariant.Detail,
-            lighten = true,
         )
         LightText(
             text = value,
