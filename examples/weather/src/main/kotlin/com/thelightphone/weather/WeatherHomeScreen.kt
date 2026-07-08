@@ -1,5 +1,6 @@
 package com.thelightphone.weather
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,13 +26,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import com.thelightphone.weather.R
 import com.thelightphone.sdk.ui.designVerticalPxToSp
 import com.thelightphone.sdk.InitialScreen
 import com.thelightphone.sdk.LightScreen
@@ -112,6 +118,13 @@ class WeatherHomeScreen(sealedActivity: SealedLightActivity) :
                             onBack = viewModel::closeSettings,
                             onChangeLocation = viewModel::openLocationFromSettings,
                             onToggleUnit = viewModel::toggleTemperatureUnit,
+                            onOpenAttribution = viewModel::openAttribution,
+                        )
+                    }
+
+                    is WeatherScreenMode.Attribution -> {
+                        AttributionContent(
+                            onBack = viewModel::closeAttribution,
                         )
                     }
 
@@ -375,6 +388,15 @@ private fun compactCopyStyle(): TextStyle {
 }
 
 @Composable
+private fun compactFineStyle(): TextStyle {
+    val base = LightThemeTokens.typography.fine
+    return base.copy(
+        fontSize = base.fontSize.value.designVerticalPxToSp(),
+        lineHeight = (base.fontSize.value * 1.2f).designVerticalPxToSp(),
+    )
+}
+
+@Composable
 private fun HeroTemperatureText(text: String) {
     val colors = LightThemeTokens.colors
     val base = LightThemeTokens.typography.title
@@ -512,6 +534,7 @@ private fun SettingsContent(
     onBack: () -> Unit,
     onChangeLocation: () -> Unit,
     onToggleUnit: () -> Unit,
+    onOpenAttribution: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         LightTopBar(
@@ -525,6 +548,7 @@ private fun SettingsContent(
 
         Column(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 1f.gridUnitsAsDp()),
         ) {
@@ -537,6 +561,75 @@ private fun SettingsContent(
                 label = "Location",
                 value = shortLocationName(locationName),
                 onClick = onChangeLocation,
+            )
+        }
+
+        AttributionFooter(onClick = onOpenAttribution)
+    }
+}
+
+@Composable
+private fun AttributionFooter(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4f.gridUnitsAsDp())
+            .lightClickable(onClick = onClick)
+            .padding(horizontal = 1f.gridUnitsAsDp()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = buildAnnotatedString {
+                append("Weather data provided by ")
+                withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
+                    append("Open-Meteo")
+                }
+                append(".")
+            },
+            style = compactFineStyle(),
+            color = LightThemeTokens.colors.content,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun AttributionContent(
+    onBack: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        LightTopBar(
+            leftButton = LightBarButton.LightIcon(
+                icon = LightIcons.BACK,
+                onClick = onBack,
+            ),
+            center = LightTopBarCenter.Text("Open-Meteo"),
+            modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 2f.gridUnitsAsDp()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.openmeteo),
+                contentDescription = "Open-Meteo QR code",
+                modifier = Modifier
+                    .padding(top = 2f.gridUnitsAsDp())
+                    .size(12f.gridUnitsAsDp()),
+            )
+            Text(
+                text = "Open-Meteo is an open-source weather API\n\n" +
+                    "Scan the QR code or visit:\n" +
+                    "https://open-meteo.com to learn more.",
+                style = compactFineStyle(),
+                color = LightThemeTokens.colors.content,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 2f.gridUnitsAsDp()),
             )
         }
     }
