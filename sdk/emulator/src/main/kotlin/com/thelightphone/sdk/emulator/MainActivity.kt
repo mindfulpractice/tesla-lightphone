@@ -1,6 +1,5 @@
 package com.thelightphone.sdk.emulator
 
-import android.app.ComponentCaller
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -11,25 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -38,23 +21,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.thelightphone.sdk.server.LightSdkServer
 import com.thelightphone.sdk.server.LightSdkServer.queryEnabledClients
 import com.thelightphone.sdk.server.LightSdkServer.runningAsSystemApp
-import com.thelightphone.sdk.server.LightSdkServerSettings
-import com.thelightphone.sdk.ui.LightIcon
-import com.thelightphone.sdk.ui.LightIcons
-import com.thelightphone.sdk.ui.LightText
-import com.thelightphone.sdk.ui.LightTextVariant
-import com.thelightphone.sdk.ui.LightTheme
-import com.thelightphone.sdk.ui.LightThemeColors
-import com.thelightphone.sdk.ui.LightThemeController
-import com.thelightphone.sdk.ui.gridUnitsAsDp
+import com.thelightphone.sdk.ui.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-const val SCREEN_OFF_FLAG = "SCREEN_OFF"
 class MainActivity : ComponentActivity() {
 
     enum class Nav {
@@ -76,7 +51,7 @@ class MainActivity : ComponentActivity() {
                 "WARNING: LightOS emulator is NOT running as a system app and may not work."
             )
         }
-        val serverSettings = LightSdkServerSettings(this)
+        val serverSettings = LightSdkServer.provideSdkSettings(this)
         setContent {
             val themeColors by LightThemeController.colors.collectAsState()
             val currentNav by currentNavFlow.collectAsState()
@@ -90,7 +65,7 @@ class MainActivity : ComponentActivity() {
                     Nav.Toolbox -> {
                         ToolList(
                             fetchExternalTools = {
-                                queryEnabledClients().map {
+                                queryEnabledClients(serverSettings).map {
                                     val appInfo = it.packageInfo.applicationInfo!!
                                     val label =
                                         packageManager.getApplicationLabel(appInfo).toString()
@@ -122,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        val screenTurnedOff = intent.extras?.getBoolean(SCREEN_OFF_FLAG, false) == true
+        val screenTurnedOff = intent.extras?.getBoolean(LightSdkServer.SCREEN_OFF_FLAG, false) == true
         if (screenTurnedOff) {
             currentNavFlow.value = Nav.LockScreen
         }
@@ -214,7 +189,6 @@ private fun LightLockscreen(onUnlockClicked: () -> Unit) {
             ) {
                 var time by remember { mutableStateOf(LocalTime.now()) }
 
-                // Re-runs the loop once; updates state every second
                 LaunchedEffect(Unit) {
                     while (true) {
                         time = LocalTime.now()
@@ -243,8 +217,6 @@ private fun LightLockscreen(onUnlockClicked: () -> Unit) {
 @Composable
 fun LockScreenPreview() {
     LightTheme(colors = LightThemeColors.Dark) {
-        LightLockscreen {
-
-        }
+        LightLockscreen { }
     }
 }
