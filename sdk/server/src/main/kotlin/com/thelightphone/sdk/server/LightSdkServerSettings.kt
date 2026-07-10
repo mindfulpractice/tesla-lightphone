@@ -51,7 +51,7 @@ class DefaultLightSdkServerSettings(context: Context) : LightSdkServerSettings {
     companion object {
         const val TAG = "LightSdkServerSettings"
         private const val CLIENT_FILTER_LEVEL = "client_filter_level"
-        private const val FORCE_FOCUS_LEVEL = "force_focus_level"
+        private const val FORCE_FOCUS_LEVEL = "light_force_focus_level"
         private const val USER_PREFERENCES_HAPTICS = "user_preferences_haptics_enabled"
         private const val KEYBOARD_EMOJIS = "lp3_keyboard_emojis"
         private const val KEYBOARD_SHOW_VOICE = "lp3_keyboard_show_voice"
@@ -75,17 +75,20 @@ class DefaultLightSdkServerSettings(context: Context) : LightSdkServerSettings {
             preferences.edit().putInt(CLIENT_FILTER_LEVEL, value.ordinal).apply()
         }
 
+    // store in system settings, likely only going to expose for users using adb
     override var forceFocusLevel: ForceFocusLevel
-        get() = preferences
-            .getInt(FORCE_FOCUS_LEVEL, LightSdkServer.defaultForceFocusLevel.ordinal)
-            .let { index ->
-                ForceFocusLevel.entries.getOrElse(index) {
-                    Log.e(TAG, "Invalid value for client filter level: $it")
-                    LightSdkServer.defaultForceFocusLevel
-                }
+        get() = Settings.System.getInt(
+            contentResolver,
+            FORCE_FOCUS_LEVEL,
+            LightSdkServer.defaultForceFocusLevel.ordinal
+        ).let { index ->
+            ForceFocusLevel.entries.getOrElse(index) {
+                Log.e(TAG, "Invalid value for client filter level: $it")
+                LightSdkServer.defaultForceFocusLevel
             }
+        }
         set(value) {
-            preferences.edit().putInt(FORCE_FOCUS_LEVEL, value.ordinal).apply()
+            Settings.System.putInt(contentResolver, FORCE_FOCUS_LEVEL, value.ordinal)
         }
 
     override var userPreferences: LightServiceMethod.GetUserPreferences.Response
