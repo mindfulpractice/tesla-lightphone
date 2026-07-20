@@ -14,6 +14,8 @@ import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 import kotlin.text.Charsets.UTF_8
 
+private const val WEATHER_API_BASE = "https://production.lightphonecloud.com"
+
 @Serializable
 internal data class GeocodingResponse(
     val results: List<GeocodingResult> = emptyList(),
@@ -80,7 +82,7 @@ internal class WeatherApi {
     suspend fun searchLocations(query: String): Result<List<GeocodingResult>> = runCatching {
         val encoded = URLEncoder.encode(query.trim(), UTF_8.name())
         val response = client.get(
-            "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=15",
+            "$WEATHER_API_BASE/tools/weather/geolocation?name=$encoded&count=15",
         )
 
         if (!response.status.isSuccess()) {
@@ -94,7 +96,7 @@ internal class WeatherApi {
 
     suspend fun fetchForecast(latitude: Double, longitude: Double): Result<StoredForecast> = runCatching {
         val response = client.get(
-            "https://api.open-meteo.com/v1/forecast" +
+            "$WEATHER_API_BASE/tools/weather/forecast" +
                 "?latitude=$latitude&longitude=$longitude" +
                 "&current=temperature_2m,apparent_temperature,weather_code" +
                 "&hourly=temperature_2m,apparent_temperature,precipitation,precipitation_probability" +
