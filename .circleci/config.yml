@@ -31,8 +31,18 @@ jobs:
               exit 1
             fi
 
+            if [[ -z "${CIRCLE_TAG:-}" ]]; then
+              echo "this job only runs on git tags" >&2
+              exit 1
+            fi
+            if [[ "$CIRCLE_TAG" != "$SDK_VERSION" && "$CIRCLE_TAG" != "v$SDK_VERSION" ]]; then
+              echo "tag '$CIRCLE_TAG' does not match sdkVersion '$SDK_VERSION' (or v$SDK_VERSION)" >&2
+              exit 1
+            fi
+
             echo "SDK_GIT_URL=https://github.com/lightphone/light-sdk"
             echo "SDK_GIT_REF=$CIRCLE_SHA1"
+            echo "CIRCLE_TAG=$CIRCLE_TAG"
             echo "SDK_VERSION=$SDK_VERSION"
             echo "export SDK_VERSION='$SDK_VERSION'" >> "$BASH_ENV"
 
@@ -93,4 +103,9 @@ jobs:
 workflows:
   build-light-builder:
     jobs:
-      - build-and-push-light-builder
+      - build-and-push-light-builder:
+          filters:
+            tags:
+              only: /^v?\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
