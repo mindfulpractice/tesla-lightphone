@@ -8,6 +8,10 @@ pluginManagement {
     }
 }
 
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 val localProperties = Properties()
 val localPropertiesFile = file("local.properties")
 if (localPropertiesFile.exists()) {

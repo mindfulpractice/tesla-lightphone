@@ -1,0 +1,3 @@
+// Copy this file to config.js and replace with your Tesla Client ID
+// from developer.tesla.com. Do NOT commit config.js to git.
+const TESLA_CLIENT_ID = 'your-client-id-here';

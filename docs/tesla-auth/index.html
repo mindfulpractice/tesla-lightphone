@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tesla Connect — Light Phone</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --fg: #e8e8e8;
+    --fg2: #999;
+    --accent: #fff;
+    --border: #333;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .card {
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--fg2);
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+  .btn {
+    display: inline-block;
+    padding: 14px 32px;
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #qr-container {
+    margin: 24px auto;
+    padding: 20px;
+    background: #fff;
+    display: inline-block;
+    border-radius: 4px;
+  }
+  #qr-container canvas { display: block; }
+  .step {
+    font-size: 13px;
+    color: var(--fg2);
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+  .step strong { color: var(--fg); }
+  .error {
+    color: #e55;
+    font-size: 14px;
+    margin: 16px 0;
+  }
+  .hidden { display: none; }
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid var(--fg2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <!-- Step 1: Sign in -->
+  <div id="view-start">
+    <h1>Tesla Connect</h1>
+    <p class="subtitle">Sign in with your Tesla account to connect your Light Phone.</p>
+    <button class="btn" onclick="startAuth()">Sign in with Tesla</button>
+  </div>
+
+  <!-- Step 2: QR code -->
+  <div id="view-qr" class="hidden">
+    <h1>Scan with Light Phone</h1>
+    <p class="subtitle">Open the Tesla tool, tap Connect, and scan this code.</p>
+    <div id="qr-container"></div>
+    <button class="btn" id="copy-btn" onclick="copyPayload()" style="margin-top:16px;font-size:13px;padding:10px 24px;">Copy Code</button>
+    <p class="step">This code expires in a few minutes.<br>
+    <strong>Scan quickly. Do not share it.</strong></p>
+  </div>
+
+  <!-- Error -->
+  <div id="view-error" class="hidden">
+    <h1>Something went wrong</h1>
+    <p id="error-message" class="error"></p>
+    <button class="btn" onclick="startAuth()">Try Again</button>
+  </div>
+</div>
+
+<!-- QR code library (lightweight, no dependencies) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+<!-- Your Tesla Client ID — copy config.js.example to config.js and add your ID -->
+<script src="config.js"></script>
+
+<script>
+  // ── Config ────────────────────────────────────────────
+  // CLIENT_ID is loaded from config.js (see config.js.example)
+  if (typeof TESLA_CLIENT_ID === 'undefined' || !TESLA_CLIENT_ID) {
+    document.querySelector('.card').innerHTML =
+      '<h1>Setup needed</h1>' +
+      '<p class="subtitle">Copy <code>config.js.example</code> to <code>config.js</code> ' +
+      'and add your Tesla Client ID.<br><br>' +
+      'See the setup guide for details.</p>';
+  }
+  const CLIENT_ID = typeof TESLA_CLIENT_ID !== 'undefined' ? TESLA_CLIENT_ID : '';
+  const REDIRECT_URI = window.location.origin + window.location.pathname;
+  const SCOPES = 'openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds';
+  const AUTH_URL = 'https://auth.tesla.com/oauth2/v3/authorize';
+
+  // ── PKCE helpers ──────────────────────────────────────
+  function generateRandom(length) {
+    const arr = new Uint8Array(length);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function sha256(plain) {
+    const data = new TextEncoder().encode(plain);
+    return await crypto.subtle.digest('SHA-256', data);
+  }
+
+  function base64url(buffer) {
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // ── Views ─────────────────────────────────────────────
+  function show(viewId) {
+    document.querySelectorAll('.card > div').forEach(d => d.classList.add('hidden'));
+    document.getElementById(viewId).classList.remove('hidden');
+  }
+
+  function showError(msg) {
+    document.getElementById('error-message').textContent = msg;
+    show('view-error');
+  }
+
+  // ── OAuth flow ────────────────────────────────────────
+  async function startAuth() {
+    const state = generateRandom(16);
+    const codeVerifier = generateRandom(32);
+    const codeChallenge = base64url(await sha256(codeVerifier));
+
+    sessionStorage.setItem('tesla_state', state);
+    sessionStorage.setItem('tesla_verifier', codeVerifier);
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      scope: SCOPES,
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+    });
+
+    window.location.href = AUTH_URL + '?' + params.toString();
+  }
+
+  function handleCallback(code, state) {
+    const savedState = sessionStorage.getItem('tesla_state');
+    const codeVerifier = sessionStorage.getItem('tesla_verifier');
+
+    if (!savedState || state !== savedState) {
+      showError('State mismatch — please try again.');
+      return;
+    }
+
+    // Clean up session storage
+    sessionStorage.removeItem('tesla_state');
+    sessionStorage.removeItem('tesla_verifier');
+
+    // Pass the authorization code + verifier to the app via QR.
+    // The app will exchange them for tokens (keeping client_secret private).
+    showQR(code, codeVerifier);
+  }
+
+  let currentPayload = null;
+
+  function copyPayload() {
+    if (!currentPayload) return;
+    navigator.clipboard.writeText(currentPayload).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+    });
+  }
+
+  function showQR(code, verifier) {
+    // Format: tesla-auth:CODE|VERIFIER
+    // The app detects the tesla-auth: prefix and splits on |
+    currentPayload = 'tesla-auth:' + code + '|' + verifier;
+    show('view-qr');
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+
+    new QRious({
+      element: canvas,
+      value: currentPayload,
+      size: 260,
+      level: 'M',
+    });
+  }
+
+  // ── On page load: check for OAuth callback ────────────
+  (function init() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const error = params.get('error');
+
+    if (error) {
+      history.replaceState(null, '', window.location.pathname);
+      showError('Tesla denied access: ' + (params.get('error_description') || error));
+    } else if (code && state) {
+      history.replaceState(null, '', window.location.pathname);
+      handleCallback(code, state);
+    } else {
+      show('view-start');
+    }
+  })();
+</script>
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,6 +11,11 @@ plugins {
 
 android {
     compileSdk = rootProject.ext["compileSdk"] as Int
+
+    // Read Tesla credentials from local.properties (gitignored — never committed)
+    val localProps = Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    }
 
     signingConfigs {
         create("lightsdkDev") {
@@ -26,6 +33,18 @@ android {
         targetSdk = rootProject.ext["targetSdk"] as Int
 
         manifestPlaceholders["sdkVersion"] = property("sdkVersion") as String
+
+        // Tesla Fleet API credentials — set in local.properties, injected at build time
+        buildConfigField("String", "TESLA_CLIENT_ID",
+            "\"${localProps.getProperty("TESLA_CLIENT_ID", "")}\"")
+        buildConfigField("String", "TESLA_CLIENT_SECRET",
+            "\"${localProps.getProperty("TESLA_CLIENT_SECRET", "")}\"")
+        buildConfigField("String", "TESLA_REDIRECT_URI",
+            "\"${localProps.getProperty("TESLA_REDIRECT_URI", "")}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -59,6 +78,7 @@ kotlin {
 
 dependencies {
     implementation(project(":sdk:client"))
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation(libs.kotlin.test)
     ksp(libs.androidx.room.compiler)
 }
