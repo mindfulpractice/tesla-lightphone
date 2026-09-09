@@ -43,6 +43,19 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+### Tesla VCP keys ###
+**/tesla_private_key.pem
+**/tesla_public_key.pem
+
+### Tesla proxy/dev files ###
+tool/tls_cert.pem
+tool/tls_key.pem
+tool/proxy_wrapper.go
+tool/proxy-config/
+
+### Tesla auth page config (contains user's Client ID) ###
+docs/tesla-auth/config.js
+
 ### Clanker ###
 .claude/
 
