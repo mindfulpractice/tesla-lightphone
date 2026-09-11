@@ -2,6 +2,14 @@
 
 Control your Tesla from your Light Phone 3. Lock, unlock, climate, trunk, sentry mode, and more — no smartphone needed.
 
+<p align="center">
+  <img src="docs/screenshots/home.png" width="160" alt="Home">
+  <img src="docs/screenshots/status.png" width="160" alt="Status">
+  <img src="docs/screenshots/settings.png" width="160" alt="Settings">
+  <img src="docs/screenshots/controls.png" width="160" alt="Controls">
+  <img src="docs/screenshots/order.png" width="160" alt="Order">
+</p>
+
 ## Quick Start
 
 See the full **[Setup Guide](tool/SETUP_GUIDE.md)** for step-by-step instructions covering everything from Tesla developer account creation to scanning the QR code.
