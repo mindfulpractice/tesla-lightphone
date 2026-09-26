@@ -25,6 +25,7 @@ import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightBottomBar
 import com.thelightphone.sdk.ui.LightFullscreenModal
+import com.thelightphone.sdk.LightQrCodeScanner
 import com.thelightphone.sdk.ui.LightIcons
 import com.thelightphone.sdk.ui.LightScrollView
 import com.thelightphone.sdk.ui.LightText
@@ -194,6 +195,17 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
 
     @Composable
     private fun CredentialsContent(state: SetupUiState) {
+        // Show the QR scanner full-screen when active
+        if (state.showQrScanner) {
+            LightQrCodeScanner(
+                title = "Scan Setup QR",
+                onScanned = { viewModel.onQrScanned(it) },
+                onBack = { viewModel.hideQrScanner() },
+                modifier = Modifier.background(LightThemeTokens.colors.background),
+            )
+            return
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -211,6 +223,12 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 LightText(
                     text = "Enter Your Credentials",
                     variant = LightTextVariant.Title,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
+                LightText(
+                    text = "Easiest: visit tesla-lightphone.app/setup on a computer, paste your credentials, and scan the QR code.",
+                    variant = LightTextVariant.Copy,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
@@ -249,12 +267,18 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 )
             }
 
-            LightBottomBar {
-                LightBarButton(
-                    text = "Save",
-                    onClick = { viewModel.saveCredentials() },
-                )
-            }
+            LightBottomBar(
+                items = listOf(
+                    LightBarButton.Text(
+                        text = "SCAN QR",
+                        onClick = { viewModel.showQrScanner() },
+                    ),
+                    LightBarButton.Text(
+                        text = "SAVE",
+                        onClick = { viewModel.saveCredentials() },
+                    ),
+                ),
+            )
         }
     }
 

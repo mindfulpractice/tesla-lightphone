@@ -31,6 +31,7 @@ data class SetupUiState(
     val errorModal: String? = null,
     /** Progress messages shown during the registration step. */
     val registrationStatus: List<String> = emptyList(),
+    val showQrScanner: Boolean = false,
 )
 
 class SetupWizardViewModel(
@@ -242,4 +243,55 @@ class SetupWizardViewModel(
             )
         }
     }
+
+    // ── QR scanning ─────────────────────────────────────
+
+    fun showQrScanner() {
+        _uiState.update { it.copy(showQrScanner = true) }
+    }
+
+    fun hideQrScanner() {
+        _uiState.update { it.copy(showQrScanner = false) }
+    }
+
+    /**
+     * Called when the QR scanner reads a code from setup.html.
+     * Expected JSON format: {"client_id":"...","client_secret":"..."}
+     */
+    fun onQrScanned(raw: String) {
+        try {
+            val json = org.json.JSONObject(raw.trim())
+            val id = json.optString("client_id", "").trim()
+            val secret = json.optString("client_secret", "").trim()
+
+            if (id.isBlank() || secret.isBlank()) {
+                _uiState.update {
+                    it.copy(
+                        showQrScanner = false,
+                        errorModal = "QR code missing client_id or client_secret.",
+                    )
+                }
+                return
+            }
+
+            // Populate the fields, hide scanner, and auto-save
+            _uiState.update {
+                it.copy(
+                    clientId = id,
+                    clientSecret = secret,
+                    showQrScanner = false,
+                )
+            }
+            saveCredentials()
+        } catch (e: Exception) {
+            Log.e("SetupWizard", "QR parse error: ${e.message}")
+            _uiState.update {
+                it.copy(
+                    showQrScanner = false,
+                    errorModal = "Couldn't read QR code. Make sure you're scanning the code from the setup page.",
+                )
+            }
+        }
+    }
+
 }
