@@ -1,0 +1,7 @@
+[tool]
+id = "com.thelightphone.tool.teslav2"
+label = "Tesla v2"
+versionCode = 1
+versionName = "0.1.0"
+permissions = ["android.permission.INTERNET"]
+serverPackage = "com.lightos"
