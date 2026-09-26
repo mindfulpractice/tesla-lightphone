@@ -64,8 +64,6 @@ kotlin {
 dependencies {
     implementation(project(":sdk:client"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    // EncryptedSharedPreferences for credential storage
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     testImplementation(libs.kotlin.test)
     ksp(libs.androidx.room.compiler)
 }

@@ -776,8 +776,6 @@ class TeslaApi(
     suspend fun honkHorn(vin: String) = sendSignedCommand(vin, TeslaCommand.HonkHorn)
     suspend fun ventWindows(vin: String) = sendSignedCommand(vin, TeslaCommand.VentWindows)
     suspend fun closeWindows(vin: String) = sendSignedCommand(vin, TeslaCommand.CloseWindows)
-}
-
 
     // ── Partner registration (automated in setup wizard) ─────
 
@@ -849,6 +847,8 @@ class TeslaApi(
             Result.failure(e)
         }
     }
+
+}
 
 // ── Data models ──────────────────────────────────────────
 

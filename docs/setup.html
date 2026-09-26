@@ -15,73 +15,113 @@
             justify-content: center;
             padding: 2rem 1rem;
         }
-        .container {
-            max-width: 440px;
-            width: 100%;
+        .container { max-width: 520px; width: 100%; }
+        h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.5; }
+        .step {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
         }
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        .step.completed { border-color: #22c55e; background: #f0fdf4; }
+        .step.active { border-color: #1a1a1a; }
+        .step.locked { opacity: 0.5; pointer-events: none; }
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
         }
-        .subtitle {
-            color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 2rem;
-            line-height: 1.5;
+        .step-num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: #e5e5e5;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; font-weight: 600; color: #666;
+            flex-shrink: 0;
+        }
+        .step.active .step-num { background: #1a1a1a; color: #fff; }
+        .step.completed .step-num { background: #22c55e; color: #fff; }
+        .step-title { font-size: 1rem; font-weight: 600; }
+        .step p { font-size: 0.9rem; color: #555; line-height: 1.6; margin-bottom: 0.75rem; }
+        .step p:last-child { margin-bottom: 0; }
+        .step code {
+            display: block;
+            background: #f5f5f5;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            word-break: break-all;
+            margin: 0.5rem 0;
+            color: #333;
+            font-family: monospace;
         }
         label {
             display: block;
             font-size: 0.85rem;
             font-weight: 500;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.3rem;
             color: #333;
         }
-        input[type="text"] {
+        input[type="text"], input[type="password"] {
             width: 100%;
-            padding: 0.7rem 0.8rem;
+            padding: 0.6rem 0.75rem;
             border: 1px solid #ddd;
             border-radius: 8px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-family: monospace;
-            margin-bottom: 1.25rem;
+            margin-bottom: 0.75rem;
             background: #fff;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #333;
-        }
-        button {
-            width: 100%;
-            padding: 0.8rem;
+        input:focus { outline: none; border-color: #333; }
+        .btn {
+            display: inline-block;
+            padding: 0.65rem 1.25rem;
             background: #1a1a1a;
             color: #fff;
             border: none;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
-            margin-bottom: 1.5rem;
+            text-decoration: none;
         }
-        button:hover { background: #333; }
-        button:disabled { background: #999; cursor: not-allowed; }
+        .btn:hover { background: #333; }
+        .btn:disabled { background: #999; cursor: not-allowed; }
+        .btn-outline {
+            background: #fff;
+            color: #1a1a1a;
+            border: 1px solid #ddd;
+        }
+        .btn-outline:hover { background: #f5f5f5; }
+        .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
         #qr-container {
             display: none;
             text-align: center;
             padding: 1.5rem;
             background: #fff;
             border-radius: 12px;
-            border: 1px solid #eee;
+            border: 2px solid #22c55e;
+            margin-top: 1rem;
         }
         #qr-container p {
-            margin-top: 1rem;
+            margin-top: 0.75rem;
             font-size: 0.85rem;
             color: #666;
             line-height: 1.5;
         }
         canvas { max-width: 280px; width: 100%; height: auto; }
+        .status-msg {
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
+            color: #22c55e;
+            font-weight: 500;
+        }
+        .status-msg.error { color: #ef4444; }
         .privacy-note {
-            margin-top: 2rem;
+            margin-top: 1.5rem;
             padding: 1rem;
             background: #f0f0f0;
             border-radius: 8px;
@@ -89,65 +129,284 @@
             color: #666;
             line-height: 1.5;
         }
+        .collapsible-details { display: none; margin-top: 0.75rem; }
+        .collapsible-details.show { display: block; }
+        .toggle-link {
+            font-size: 0.85rem;
+            color: #1a1a1a;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .checklist { list-style: none; padding: 0; margin: 0.5rem 0; }
+        .checklist li {
+            font-size: 0.9rem;
+            color: #555;
+            padding: 0.25rem 0;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+        .checklist li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Tesla Credential Setup</h1>
-        <p class="subtitle">
-            Paste your Tesla developer credentials below to generate a QR code.
-            Scan it with your Light Phone to auto-fill the setup fields.
-        </p>
+        <h1>Tesla for Light Phone</h1>
+        <p class="subtitle">Complete these steps on this computer, then scan one QR code on your Light Phone.</p>
 
-        <label for="client-id">Client ID</label>
-        <input type="text" id="client-id" placeholder="Paste your Client ID here">
+        <!-- Step 1: Developer Account -->
+        <div class="step active" id="step1">
+            <div class="step-header">
+                <div class="step-num">1</div>
+                <div class="step-title">Create a Tesla Developer App</div>
+            </div>
+            <p>Go to <a href="https://developer.tesla.com" target="_blank">developer.tesla.com</a> and create an application with these settings:</p>
+            <ul class="checklist">
+                <li>Allowed Origin: <code>https://tesla-lightphone.app</code></li>
+                <li>Allowed Redirect URI: <code>https://tesla-lightphone.app/setup</code></li>
+                <li>API Scopes: select <strong>Vehicle Commands</strong>, <strong>Vehicle Charging Management</strong>, and <strong>Vehicle Device Data</strong></li>
+            </ul>
+            <p>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong> from the app dashboard.</p>
+            <span class="toggle-link" onclick="toggleDetails('details1')">Need more detail?</span>
+            <div class="collapsible-details" id="details1">
+                <p>1. Sign in at developer.tesla.com with your Tesla account.<br>
+                2. Click "Create Application".<br>
+                3. Fill in any name and description (these are for your reference).<br>
+                4. Set the Origin and Redirect URI exactly as shown above.<br>
+                5. Under API scopes, check the three boxes listed above.<br>
+                6. Submit the application. It may take a few minutes to be approved.<br>
+                7. Once approved, copy the Client ID and Client Secret.</p>
+            </div>
+        </div>
 
-        <label for="client-secret">Client Secret</label>
-        <input type="text" id="client-secret" placeholder="Paste your Client Secret here">
+        <!-- Step 2: Enter Credentials -->
+        <div class="step" id="step2">
+            <div class="step-header">
+                <div class="step-num">2</div>
+                <div class="step-title">Enter Your Credentials</div>
+            </div>
+            <label for="client-id">Client ID</label>
+            <input type="text" id="client-id" placeholder="Paste your Client ID">
+            <label for="client-secret">Client Secret</label>
+            <input type="password" id="client-secret" placeholder="Paste your Client Secret">
+            <div class="btn-row">
+                <button class="btn" onclick="saveCredentials()">Save & Continue</button>
+            </div>
+            <div id="cred-status"></div>
+        </div>
 
-        <button id="generate-btn" onclick="generateQR()">Generate QR Code</button>
+        <!-- Step 3: Pair Virtual Key -->
+        <div class="step locked" id="step3">
+            <div class="step-header">
+                <div class="step-num">3</div>
+                <div class="step-title">Pair Virtual Key</div>
+            </div>
+            <p>This lets the Light Phone app send commands to your car. Click the button below — Tesla will ask you to approve through the <strong>Tesla app on your smartphone</strong>.</p>
+            <p>Make sure you have the Tesla app installed on your smartphone (not the Light Phone).</p>
+            <div class="btn-row">
+                <a class="btn" id="pair-link" href="#" target="_blank">Pair Virtual Key</a>
+                <button class="btn btn-outline" onclick="completeStep3()">Done — Key Paired</button>
+            </div>
+        </div>
 
-        <div id="qr-container">
-            <canvas id="qr-canvas"></canvas>
-            <p>Scan this with your Light Phone's camera.<br>The credentials will auto-fill in the Tesla app.</p>
+        <!-- Step 4: Sign In -->
+        <div class="step locked" id="step4">
+            <div class="step-header">
+                <div class="step-num">4</div>
+                <div class="step-title">Sign In with Tesla</div>
+            </div>
+            <p>Sign into your Tesla account to authorize the Light Phone app. You'll be redirected to Tesla and then back here.</p>
+            <div class="btn-row">
+                <button class="btn" id="signin-btn" onclick="startOAuth()">Sign In with Tesla</button>
+            </div>
+            <div id="oauth-status"></div>
+        </div>
+
+        <!-- Step 5: QR Code -->
+        <div class="step locked" id="step5">
+            <div class="step-header">
+                <div class="step-num">5</div>
+                <div class="step-title">Scan QR on Light Phone</div>
+            </div>
+            <p>Open the <strong>Tesla v2</strong> app on your Light Phone and tap <strong>Scan QR</strong>.</p>
+            <div id="qr-container">
+                <canvas id="qr-canvas"></canvas>
+                <p>Point your Light Phone camera at this code.</p>
+            </div>
         </div>
 
         <div class="privacy-note">
-            <strong>Privacy:</strong> Your credentials never leave this page.
-            The QR code is generated entirely in your browser — nothing is sent
-            to any server. You can verify this by viewing the
-            <a href="https://github.com/mindfulpractice/tesla-lightphone" target="_blank">source code</a>.
+            <strong>Privacy:</strong> Everything happens in your browser. Your credentials and tokens are never sent to any server other than Tesla's. You can verify this in the <a href="https://github.com/mindfulpractice/tesla-lightphone" target="_blank">source code</a>.
         </div>
     </div>
 
     <script>
-    // QR Code generator - minimal implementation (no external dependencies)
-    // Based on QR Code specification ISO/IEC 18004
-    // This runs entirely in the browser - no network requests
+    // ── State ──────────────────────────────────────────
 
-    function generateQR() {
-        const clientId = document.getElementById('client-id').value.trim();
-        const clientSecret = document.getElementById('client-secret').value.trim();
+    let savedClientId = '';
+    let savedClientSecret = '';
+    let authCode = null;
+    let codeVerifier = null;
 
-        if (!clientId || !clientSecret) {
-            alert('Please enter both Client ID and Client Secret.');
+    const DOMAIN = 'tesla-lightphone.app';
+    const REDIRECT_URI = 'https://tesla-lightphone.app/setup';
+
+    // ── On page load, check for OAuth redirect ─────────
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+
+        if (code) {
+            // We got redirected back from Tesla with an auth code
+            authCode = code;
+            codeVerifier = sessionStorage.getItem('pkce_verifier');
+            savedClientId = sessionStorage.getItem('client_id') || '';
+            savedClientSecret = sessionStorage.getItem('client_secret') || '';
+
+            // Clean URL
+            window.history.replaceState({}, '', '/setup');
+
+            // Restore UI to step 5
+            if (savedClientId && savedClientSecret && codeVerifier) {
+                document.getElementById('client-id').value = savedClientId;
+                document.getElementById('client-secret').value = savedClientSecret;
+                completeStep(1);
+                completeStep(2);
+                completeStep(3);
+                completeStep(4);
+                activateStep(5);
+                generateQR();
+                document.getElementById('oauth-status').innerHTML =
+                    '<div class="status-msg">Signed in with Tesla.</div>';
+            } else {
+                document.getElementById('oauth-status').innerHTML =
+                    '<div class="status-msg error">Something went wrong. Please start over.</div>';
+            }
+        }
+    });
+
+    // ── Step navigation ────────────────────────────────
+
+    function activateStep(n) {
+        const el = document.getElementById('step' + n);
+        el.classList.remove('locked');
+        el.classList.add('active');
+    }
+
+    function completeStep(n) {
+        const el = document.getElementById('step' + n);
+        el.classList.remove('active', 'locked');
+        el.classList.add('completed');
+        const numEl = el.querySelector('.step-num');
+        numEl.textContent = '✓';
+    }
+
+    // ── Step 2: Save credentials ───────────────────────
+
+    function saveCredentials() {
+        savedClientId = document.getElementById('client-id').value.trim();
+        savedClientSecret = document.getElementById('client-secret').value.trim();
+
+        if (!savedClientId || !savedClientSecret) {
+            document.getElementById('cred-status').innerHTML =
+                '<div class="status-msg error">Both fields are required.</div>';
             return;
         }
 
-        // Encode credentials as a simple JSON string
-        const data = JSON.stringify({ client_id: clientId, client_secret: clientSecret });
+        // Store in sessionStorage so they survive the OAuth redirect
+        sessionStorage.setItem('client_id', savedClientId);
+        sessionStorage.setItem('client_secret', savedClientSecret);
 
-        // Generate and draw QR code
+        document.getElementById('cred-status').innerHTML =
+            '<div class="status-msg">Credentials saved.</div>';
+
+        completeStep(2);
+
+        // Set up the pair link
+        document.getElementById('pair-link').href =
+            'https://tesla.com/_ak/' + DOMAIN;
+
+        activateStep(3);
+    }
+
+    // ── Step 3: Key pairing done ───────────────────────
+
+    function completeStep3() {
+        completeStep(3);
+        activateStep(4);
+    }
+
+    // ── Step 4: OAuth with PKCE ────────────────────────
+
+    function generateCodeVerifier() {
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        return base64urlEncode(array);
+    }
+
+    async function startOAuth() {
+        codeVerifier = generateCodeVerifier();
+
+        const encoder = new TextEncoder();
+        const data = encoder.encode(codeVerifier);
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        const challenge = base64urlEncode(new Uint8Array(hash));
+
+        sessionStorage.setItem('pkce_verifier', codeVerifier);
+
+        const authUrl = 'https://auth.tesla.com/oauth2/v3/authorize'
+            + '?client_id=' + encodeURIComponent(savedClientId)
+            + '&redirect_uri=' + encodeURIComponent(REDIRECT_URI)
+            + '&response_type=code'
+            + '&scope=openid+vehicle_device_data+vehicle_cmds+vehicle_charging_cmds+offline_access'
+            + '&code_challenge=' + challenge
+            + '&code_challenge_method=S256'
+            + '&state=setup';
+
+        window.location.href = authUrl;
+    }
+
+    function base64urlEncode(buffer) {
+        let str = '';
+        for (const byte of buffer) {
+            str += String.fromCharCode(byte);
+        }
+        return btoa(str)
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+    }
+
+    // ── Step 5: Generate QR ────────────────────────────
+
+    function generateQR() {
+        const payload = JSON.stringify({
+            client_id: savedClientId,
+            client_secret: savedClientSecret,
+            auth_code: authCode,
+            code_verifier: codeVerifier,
+        });
+
         const canvas = document.getElementById('qr-canvas');
-        drawQR(canvas, data);
-
+        drawQR(canvas, payload);
         document.getElementById('qr-container').style.display = 'block';
     }
 
-    // Minimal QR encoder
+    // ── Toggle details ─────────────────────────────────
+
+    function toggleDetails(id) {
+        const el = document.getElementById(id);
+        el.classList.toggle('show');
+    }
+
+    // ── QR Code Generator ──────────────────────────────
+    // Minimal inline QR encoder — no external dependencies
+
     function drawQR(canvas, text) {
-        // Use a simple encoding: convert to a QR-compatible data URL
-        // For production, we load a tiny QR library inline
         const qr = generateQRMatrix(text);
         const ctx = canvas.getContext('2d');
         const size = 280;
@@ -169,23 +428,18 @@
         }
     }
 
-    // QR Code Matrix Generator (Mode: Byte, ECC: L)
-    // Supports up to version 10 (max ~271 bytes for ECC L)
     function generateQRMatrix(text) {
         const data = new TextEncoder().encode(text);
         const version = getMinVersion(data.length);
         const size = version * 4 + 17;
 
-        // Create matrix
         const matrix = Array.from({length: size}, () => Array(size).fill(null));
         const reserved = Array.from({length: size}, () => Array(size).fill(false));
 
-        // Place finder patterns
         placeFinder(matrix, reserved, 0, 0);
         placeFinder(matrix, reserved, size - 7, 0);
         placeFinder(matrix, reserved, 0, size - 7);
 
-        // Place alignment patterns
         if (version >= 2) {
             const positions = getAlignmentPositions(version);
             for (const r of positions) {
@@ -197,17 +451,14 @@
             }
         }
 
-        // Place timing patterns
         for (let i = 8; i < size - 8; i++) {
             if (!reserved[6][i]) { matrix[6][i] = i % 2 === 0; reserved[6][i] = true; }
             if (!reserved[i][6]) { matrix[i][6] = i % 2 === 0; reserved[i][6] = true; }
         }
 
-        // Dark module
         matrix[size - 8][8] = true;
         reserved[size - 8][8] = true;
 
-        // Reserve format info areas
         for (let i = 0; i < 9; i++) {
             if (i < size) { reserved[8][i] = true; reserved[i][8] = true; }
         }
@@ -215,7 +466,6 @@
             reserved[8][i] = true; reserved[i][8] = true;
         }
 
-        // Reserve version info areas (version >= 7)
         if (version >= 7) {
             for (let i = 0; i < 6; i++) {
                 for (let j = size - 11; j < size - 8; j++) {
@@ -225,24 +475,15 @@
             }
         }
 
-        // Encode data
         const encoded = encodeData(data, version);
-
-        // Place data bits
         placeData(matrix, reserved, encoded, size);
-
-        // Apply mask (mask 0 for simplicity)
         applyMask(matrix, reserved, size, 0);
+        placeFormatInfo(matrix, size, 0);
 
-        // Place format info
-        placeFormatInfo(matrix, size, 0); // ECC L, mask 0
-
-        // Place version info
         if (version >= 7) {
             placeVersionInfo(matrix, size, version);
         }
 
-        // Fill remaining nulls
         for (let r = 0; r < size; r++)
             for (let c = 0; c < size; c++)
                 if (matrix[r][c] === null) matrix[r][c] = false;
@@ -251,23 +492,17 @@
     }
 
     function getMinVersion(len) {
-        // Byte mode capacities for ECC L
         const caps = [0,17,32,53,78,106,134,154,192,230,271,321,367,425,458,520,586,644,718,792,858];
         for (let v = 1; v < caps.length; v++) {
             if (len <= caps[v]) return v;
         }
-        return 20; // fallback
+        return 20;
     }
 
     function placeFinder(matrix, reserved, row, col) {
         const pattern = [
-            [1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,1],
-            [1,0,1,1,1,0,1],
-            [1,0,1,1,1,0,1],
-            [1,0,1,1,1,0,1],
-            [1,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],
+            [1,0,1,1,1,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,1,1,1,1,1,1],
         ];
         for (let r = -1; r <= 7; r++) {
             for (let c = -1; c <= 7; c++) {
@@ -312,21 +547,17 @@
         const eccCodewords = getECCCodewords(version);
         const dataCodewords = totalCodewords - eccCodewords;
 
-        // Byte mode indicator (0100) + character count
         let bits = '0100';
         const countBits = version <= 9 ? 8 : 16;
         bits += data.length.toString(2).padStart(countBits, '0');
 
-        // Data
         for (const byte of data) {
             bits += byte.toString(2).padStart(8, '0');
         }
 
-        // Terminator
         bits += '0000';
         while (bits.length % 8 !== 0) bits += '0';
 
-        // Pad to fill
         const padBytes = [0xEC, 0x11];
         let padIdx = 0;
         while (bits.length < dataCodewords * 8) {
@@ -334,16 +565,13 @@
             padIdx++;
         }
 
-        // Convert to bytes
         const dataBytes = [];
         for (let i = 0; i < bits.length; i += 8) {
             dataBytes.push(parseInt(bits.substr(i, 8), 2));
         }
 
-        // Generate ECC
         const eccBytes = generateECC(dataBytes.slice(0, dataCodewords), eccCodewords);
 
-        // Combine
         const allBits = [];
         for (const b of dataBytes.slice(0, dataCodewords)) {
             for (let i = 7; i >= 0; i--) allBits.push((b >> i) & 1);
@@ -352,7 +580,6 @@
             for (let i = 7; i >= 0; i--) allBits.push((b >> i) & 1);
         }
 
-        // Remainder bits
         const remainder = [0,0,7,7,7,7,7,0,0,0,0,0,0,0,3,3,3,3,3,3,3][version] || 0;
         for (let i = 0; i < remainder; i++) allBits.push(0);
 
@@ -365,13 +592,11 @@
     }
 
     function getECCCodewords(v) {
-        // ECC Level L
         const e = [0,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28];
         return e[v] || 7;
     }
 
     function generateECC(data, eccCount) {
-        // Reed-Solomon ECC using GF(256)
         const gfExp = new Array(512);
         const gfLog = new Array(256);
         let x = 1;
@@ -383,7 +608,6 @@
         }
         for (let i = 255; i < 512; i++) gfExp[i] = gfExp[i - 255];
 
-        // Generator polynomial
         let gen = [1];
         for (let i = 0; i < eccCount; i++) {
             const newGen = new Array(gen.length + 1).fill(0);
@@ -399,7 +623,6 @@
             return gfExp[gfLog[a] + gfLog[b]];
         }
 
-        // Division
         const result = new Array(data.length + eccCount).fill(0);
         for (let i = 0; i < data.length; i++) result[i] = data[i];
 
@@ -419,7 +642,7 @@
         let bitIdx = 0;
         let upward = true;
         for (let col = size - 1; col >= 1; col -= 2) {
-            if (col === 6) col = 5; // skip timing column
+            if (col === 6) col = 5;
             const rows = upward ? Array.from({length: size}, (_, i) => size - 1 - i) : Array.from({length: size}, (_, i) => i);
             for (const row of rows) {
                 for (const c of [col, col - 1]) {
@@ -440,9 +663,6 @@
                     let mask = false;
                     switch (maskNum) {
                         case 0: mask = (r + c) % 2 === 0; break;
-                        case 1: mask = r % 2 === 0; break;
-                        case 2: mask = c % 3 === 0; break;
-                        case 3: mask = (r + c) % 3 === 0; break;
                     }
                     if (mask) matrix[r][c] = !matrix[r][c];
                 }
@@ -451,24 +671,16 @@
     }
 
     function placeFormatInfo(matrix, size, maskNum) {
-        // ECC L = 01, mask patterns
-        const formatBits = [
-            0x77c4, 0x72f3, 0x7daa, 0x789d,
-            0x662f, 0x6318, 0x6c41, 0x6976
-        ];
+        const formatBits = [0x77c4, 0x72f3, 0x7daa, 0x789d, 0x662f, 0x6318, 0x6c41, 0x6976];
         const info = formatBits[maskNum] || formatBits[0];
-
         for (let i = 0; i < 15; i++) {
             const bit = !!((info >> (14 - i)) & 1);
-
-            // Around top-left finder
             if (i < 6) matrix[8][i] = bit;
             else if (i === 6) matrix[8][7] = bit;
             else if (i === 7) matrix[8][8] = bit;
             else if (i === 8) matrix[7][8] = bit;
             else matrix[14 - i][8] = bit;
 
-            // Other copy
             if (i < 8) matrix[size - 1 - i][8] = bit;
             else matrix[8][size - 15 + i] = bit;
         }

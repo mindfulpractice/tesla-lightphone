@@ -44,14 +44,14 @@ class HomeScreen(sealedActivity: SealedLightActivity) :
         get() = HomeScreenViewModel::class.java
 
     override fun createViewModel(): HomeScreenViewModel {
-        val credentialStore = CredentialStore(lightContext)
+        val credentialStore = CredentialStore(lightContext.filesDir)
         val tokenStore = TokenStore(lightContext.dataStore)
         val api = TeslaApi(tokenStore, credentialStore)
 
         // Load shared VCP key pair from assets (Option A — all users share one key)
         try {
-            val privKeyBytes = lightContext.assets.open("tesla_private_key.pem").readBytes()
-            val pubKeyBytes = lightContext.assets.open("tesla_public_key.pem").readBytes()
+            val privKeyBytes = lightContext.readAsset("tesla_private_key.pem")
+            val pubKeyBytes = lightContext.readAsset("tesla_public_key.pem")
             api.loadKeyPair(privKeyBytes, pubKeyBytes)
             api.resetSessions()
         } catch (e: Exception) {
