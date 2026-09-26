@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesla Light Phone Setup</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #fafafa;
+            color: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 440px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.35rem;
+            color: #333;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 0.7rem 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: monospace;
+            margin-bottom: 1.25rem;
+            background: #fff;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #333;
+        }
+        button {
+            width: 100%;
+            padding: 0.8rem;
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+        }
+        button:hover { background: #333; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        #qr-container {
+            display: none;
+            text-align: center;
+            padding: 1.5rem;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #eee;
+        }
+        #qr-container p {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.5;
+        }
+        canvas { max-width: 280px; width: 100%; height: auto; }
+        .privacy-note {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tesla Credential Setup</h1>
+        <p class="subtitle">
+            Paste your Tesla developer credentials below to generate a QR code.
+            Scan it with your Light Phone to auto-fill the setup fields.
+        </p>
+
+        <label for="client-id">Client ID</label>
+        <input type="text" id="client-id" placeholder="Paste your Client ID here">
+
+        <label for="client-secret">Client Secret</label>
+        <input type="text" id="client-secret" placeholder="Paste your Client Secret here">
+
+        <button id="generate-btn" onclick="generateQR()">Generate QR Code</button>
+
+        <div id="qr-container">
+            <canvas id="qr-canvas"></canvas>
+            <p>Scan this with your Light Phone's camera.<br>The credentials will auto-fill in the Tesla app.</p>
+        </div>
+
+        <div class="privacy-note">
+            <strong>Privacy:</strong> Your credentials never leave this page.
+            The QR code is generated entirely in your browser — nothing is sent
+            to any server. You can verify this by viewing the
+            <a href="https://github.com/mindfulpractice/tesla-lightphone" target="_blank">source code</a>.
+        </div>
+    </div>
+
+    <script>
+    // QR Code generator - minimal implementation (no external dependencies)
+    // Based on QR Code specification ISO/IEC 18004
+    // This runs entirely in the browser - no network requests
+
+    function generateQR() {
+        const clientId = document.getElementById('client-id').value.trim();
+        const clientSecret = document.getElementById('client-secret').value.trim();
+
+        if (!clientId || !clientSecret) {
+            alert('Please enter both Client ID and Client Secret.');
+            return;
+        }
+
+        // Encode credentials as a simple JSON string
+        const data = JSON.stringify({ client_id: clientId, client_secret: clientSecret });
+
+        // Generate and draw QR code
+        const canvas = document.getElementById('qr-canvas');
+        drawQR(canvas, data);
+
+        document.getElementById('qr-container').style.display = 'block';
+    }
+
+    // Minimal QR encoder
+    function drawQR(canvas, text) {
+        // Use a simple encoding: convert to a QR-compatible data URL
+        // For production, we load a tiny QR library inline
+        const qr = generateQRMatrix(text);
+        const ctx = canvas.getContext('2d');
+        const size = 280;
+        const modules = qr.length;
+        const cellSize = Math.floor(size / modules);
+        canvas.width = cellSize * modules;
+        canvas.height = cellSize * modules;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#000000';
+        for (let row = 0; row < modules; row++) {
+            for (let col = 0; col < modules; col++) {
+                if (qr[row][col]) {
+                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                }
+            }
+        }
+    }
+
+    // QR Code Matrix Generator (Mode: Byte, ECC: L)
+    // Supports up to version 10 (max ~271 bytes for ECC L)
+    function generateQRMatrix(text) {
+        const data = new TextEncoder().encode(text);
+        const version = getMinVersion(data.length);
+        const size = version * 4 + 17;
+
+        // Create matrix
+        const matrix = Array.from({length: size}, () => Array(size).fill(null));
+        const reserved = Array.from({length: size}, () => Array(size).fill(false));
+
+        // Place finder patterns
+        placeFinder(matrix, reserved, 0, 0);
+        placeFinder(matrix, reserved, size - 7, 0);
+        placeFinder(matrix, reserved, 0, size - 7);
+
+        // Place alignment patterns
+        if (version >= 2) {
+            const positions = getAlignmentPositions(version);
+            for (const r of positions) {
+                for (const c of positions) {
+                    if (matrix[r] && matrix[r][c] === null) {
+                        placeAlignment(matrix, reserved, r, c);
+                    }
+                }
+            }
+        }
+
+        // Place timing patterns
+        for (let i = 8; i < size - 8; i++) {
+            if (!reserved[6][i]) { matrix[6][i] = i % 2 === 0; reserved[6][i] = true; }
+            if (!reserved[i][6]) { matrix[i][6] = i % 2 === 0; reserved[i][6] = true; }
+        }
+
+        // Dark module
+        matrix[size - 8][8] = true;
+        reserved[size - 8][8] = true;
+
+        // Reserve format info areas
+        for (let i = 0; i < 9; i++) {
+            if (i < size) { reserved[8][i] = true; reserved[i][8] = true; }
+        }
+        for (let i = size - 8; i < size; i++) {
+            reserved[8][i] = true; reserved[i][8] = true;
+        }
+
+        // Reserve version info areas (version >= 7)
+        if (version >= 7) {
+            for (let i = 0; i < 6; i++) {
+                for (let j = size - 11; j < size - 8; j++) {
+                    reserved[i][j] = true;
+                    reserved[j][i] = true;
+                }
+            }
+        }
+
+        // Encode data
+        const encoded = encodeData(data, version);
+
+        // Place data bits
+        placeData(matrix, reserved, encoded, size);
+
+        // Apply mask (mask 0 for simplicity)
+        applyMask(matrix, reserved, size, 0);
+
+        // Place format info
+        placeFormatInfo(matrix, size, 0); // ECC L, mask 0
+
+        // Place version info
+        if (version >= 7) {
+            placeVersionInfo(matrix, size, version);
+        }
+
+        // Fill remaining nulls
+        for (let r = 0; r < size; r++)
+            for (let c = 0; c < size; c++)
+                if (matrix[r][c] === null) matrix[r][c] = false;
+
+        return matrix;
+    }
+
+    function getMinVersion(len) {
+        // Byte mode capacities for ECC L
+        const caps = [0,17,32,53,78,106,134,154,192,230,271,321,367,425,458,520,586,644,718,792,858];
+        for (let v = 1; v < caps.length; v++) {
+            if (len <= caps[v]) return v;
+        }
+        return 20; // fallback
+    }
+
+    function placeFinder(matrix, reserved, row, col) {
+        const pattern = [
+            [1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1],
+            [1,0,1,1,1,0,1],
+            [1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1],
+        ];
+        for (let r = -1; r <= 7; r++) {
+            for (let c = -1; c <= 7; c++) {
+                const mr = row + r, mc = col + c;
+                if (mr >= 0 && mr < matrix.length && mc >= 0 && mc < matrix.length) {
+                    if (r >= 0 && r < 7 && c >= 0 && c < 7) {
+                        matrix[mr][mc] = !!pattern[r][c];
+                    } else {
+                        matrix[mr][mc] = false;
+                    }
+                    reserved[mr][mc] = true;
+                }
+            }
+        }
+    }
+
+    function placeAlignment(matrix, reserved, centerR, centerC) {
+        for (let r = -2; r <= 2; r++) {
+            for (let c = -2; c <= 2; c++) {
+                const mr = centerR + r, mc = centerC + c;
+                if (mr >= 0 && mr < matrix.length && mc >= 0 && mc < matrix.length && !reserved[mr][mc]) {
+                    matrix[mr][mc] = Math.abs(r) === 2 || Math.abs(c) === 2 || (r === 0 && c === 0);
+                    reserved[mr][mc] = true;
+                }
+            }
+        }
+    }
+
+    function getAlignmentPositions(version) {
+        const table = {
+            2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],
+            7:[6,22,38],8:[6,24,42],9:[6,26,46],10:[6,28,50],
+            11:[6,30,54],12:[6,32,58],13:[6,34,62],14:[6,26,46,66],
+            15:[6,26,48,70],16:[6,26,50,74],17:[6,30,54,78],
+            18:[6,30,56,82],19:[6,30,58,86],20:[6,34,62,90]
+        };
+        return table[version] || [6, 18];
+    }
+
+    function encodeData(data, version) {
+        const totalCodewords = getTotalCodewords(version);
+        const eccCodewords = getECCCodewords(version);
+        const dataCodewords = totalCodewords - eccCodewords;
+
+        // Byte mode indicator (0100) + character count
+        let bits = '0100';
+        const countBits = version <= 9 ? 8 : 16;
+        bits += data.length.toString(2).padStart(countBits, '0');
+
+        // Data
+        for (const byte of data) {
+            bits += byte.toString(2).padStart(8, '0');
+        }
+
+        // Terminator
+        bits += '0000';
+        while (bits.length % 8 !== 0) bits += '0';
+
+        // Pad to fill
+        const padBytes = [0xEC, 0x11];
+        let padIdx = 0;
+        while (bits.length < dataCodewords * 8) {
+            bits += padBytes[padIdx % 2].toString(2).padStart(8, '0');
+            padIdx++;
+        }
+
+        // Convert to bytes
+        const dataBytes = [];
+        for (let i = 0; i < bits.length; i += 8) {
+            dataBytes.push(parseInt(bits.substr(i, 8), 2));
+        }
+
+        // Generate ECC
+        const eccBytes = generateECC(dataBytes.slice(0, dataCodewords), eccCodewords);
+
+        // Combine
+        const allBits = [];
+        for (const b of dataBytes.slice(0, dataCodewords)) {
+            for (let i = 7; i >= 0; i--) allBits.push((b >> i) & 1);
+        }
+        for (const b of eccBytes) {
+            for (let i = 7; i >= 0; i--) allBits.push((b >> i) & 1);
+        }
+
+        // Remainder bits
+        const remainder = [0,0,7,7,7,7,7,0,0,0,0,0,0,0,3,3,3,3,3,3,3][version] || 0;
+        for (let i = 0; i < remainder; i++) allBits.push(0);
+
+        return allBits;
+    }
+
+    function getTotalCodewords(v) {
+        const t = [0,26,44,70,100,134,172,196,242,292,346,404,466,532,581,655,733,815,901,991,1085];
+        return t[v] || 26;
+    }
+
+    function getECCCodewords(v) {
+        // ECC Level L
+        const e = [0,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28];
+        return e[v] || 7;
+    }
+
+    function generateECC(data, eccCount) {
+        // Reed-Solomon ECC using GF(256)
+        const gfExp = new Array(512);
+        const gfLog = new Array(256);
+        let x = 1;
+        for (let i = 0; i < 255; i++) {
+            gfExp[i] = x;
+            gfLog[x] = i;
+            x <<= 1;
+            if (x >= 256) x ^= 0x11d;
+        }
+        for (let i = 255; i < 512; i++) gfExp[i] = gfExp[i - 255];
+
+        // Generator polynomial
+        let gen = [1];
+        for (let i = 0; i < eccCount; i++) {
+            const newGen = new Array(gen.length + 1).fill(0);
+            for (let j = 0; j < gen.length; j++) {
+                newGen[j] ^= gen[j];
+                newGen[j + 1] ^= gfMul(gen[j], gfExp[i]);
+            }
+            gen = newGen;
+        }
+
+        function gfMul(a, b) {
+            if (a === 0 || b === 0) return 0;
+            return gfExp[gfLog[a] + gfLog[b]];
+        }
+
+        // Division
+        const result = new Array(data.length + eccCount).fill(0);
+        for (let i = 0; i < data.length; i++) result[i] = data[i];
+
+        for (let i = 0; i < data.length; i++) {
+            const coef = result[i];
+            if (coef !== 0) {
+                for (let j = 0; j < gen.length; j++) {
+                    result[i + j] ^= gfMul(gen[j], coef);
+                }
+            }
+        }
+
+        return result.slice(data.length);
+    }
+
+    function placeData(matrix, reserved, bits, size) {
+        let bitIdx = 0;
+        let upward = true;
+        for (let col = size - 1; col >= 1; col -= 2) {
+            if (col === 6) col = 5; // skip timing column
+            const rows = upward ? Array.from({length: size}, (_, i) => size - 1 - i) : Array.from({length: size}, (_, i) => i);
+            for (const row of rows) {
+                for (const c of [col, col - 1]) {
+                    if (!reserved[row][c]) {
+                        matrix[row][c] = bitIdx < bits.length ? !!bits[bitIdx] : false;
+                        bitIdx++;
+                    }
+                }
+            }
+            upward = !upward;
+        }
+    }
+
+    function applyMask(matrix, reserved, size, maskNum) {
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (!reserved[r][c]) {
+                    let mask = false;
+                    switch (maskNum) {
+                        case 0: mask = (r + c) % 2 === 0; break;
+                        case 1: mask = r % 2 === 0; break;
+                        case 2: mask = c % 3 === 0; break;
+                        case 3: mask = (r + c) % 3 === 0; break;
+                    }
+                    if (mask) matrix[r][c] = !matrix[r][c];
+                }
+            }
+        }
+    }
+
+    function placeFormatInfo(matrix, size, maskNum) {
+        // ECC L = 01, mask patterns
+        const formatBits = [
+            0x77c4, 0x72f3, 0x7daa, 0x789d,
+            0x662f, 0x6318, 0x6c41, 0x6976
+        ];
+        const info = formatBits[maskNum] || formatBits[0];
+
+        for (let i = 0; i < 15; i++) {
+            const bit = !!((info >> (14 - i)) & 1);
+
+            // Around top-left finder
+            if (i < 6) matrix[8][i] = bit;
+            else if (i === 6) matrix[8][7] = bit;
+            else if (i === 7) matrix[8][8] = bit;
+            else if (i === 8) matrix[7][8] = bit;
+            else matrix[14 - i][8] = bit;
+
+            // Other copy
+            if (i < 8) matrix[size - 1 - i][8] = bit;
+            else matrix[8][size - 15 + i] = bit;
+        }
+    }
+
+    function placeVersionInfo(matrix, size, version) {
+        const versionBits = [
+            0,0,0,0,0,0,0,
+            0x07C94,0x085BC,0x09A99,0x0A4D3,0x0BBF6,0x0C762,0x0D847,0x0E60D,0x0F928,
+            0x10B78,0x1145D,0x12A17,0x13532,0x149A6
+        ];
+        const info = versionBits[version] || 0;
+        for (let i = 0; i < 18; i++) {
+            const bit = !!((info >> i) & 1);
+            const r = Math.floor(i / 3);
+            const c = size - 11 + (i % 3);
+            matrix[r][c] = bit;
+            matrix[c][r] = bit;
+        }
+    }
+    </script>
+</body>
+</html>
