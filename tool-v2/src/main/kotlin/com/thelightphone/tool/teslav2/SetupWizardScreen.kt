@@ -1,5 +1,11 @@
 package com.thelightphone.tool.teslav2
 
+import android.annotation.SuppressLint
+import android.net.Uri
+import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.ui.LightBarButton
@@ -60,15 +67,10 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                     .fillMaxSize()
                     .background(LightThemeTokens.colors.background),
             ) {
-                // Show QR scanner full-screen when active (any step)
+                // Show QR scanner full-screen when active
                 if (state.showQrScanner) {
-                    val title = when (state.step) {
-                        SetupStep.Welcome -> "Scan QR 1: Credentials"
-                        SetupStep.ScanAuth -> "Scan QR 2: Sign-In"
-                        else -> "Scan QR"
-                    }
                     LightQrCodeScanner(
-                        title = title,
+                        title = "Scan Credentials QR",
                         onScanned = { viewModel.onQrScanned(it) },
                         onBack = { viewModel.hideQrScanner() },
                         modifier = Modifier.background(LightThemeTokens.colors.background),
@@ -76,7 +78,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 } else {
                     when (state.step) {
                         SetupStep.Welcome -> WelcomeContent()
-                        SetupStep.ScanAuth -> ScanAuthContent()
+                        SetupStep.SignIn -> SignInContent(state)
                         SetupStep.Processing -> ProcessingContent(state)
                         SetupStep.Done -> DoneContent()
                     }
@@ -92,7 +94,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
         }
     }
 
-    // ── Welcome: instructions + Scan QR 1 ───────────────
+    // ── Welcome: instructions + Scan QR ─────────────────
 
     @Composable
     private fun WelcomeContent() {
@@ -113,7 +115,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 )
                 Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
                 LightText(
-                    text = "Complete the setup on a computer, then scan the QR codes here.",
+                    text = "Set up your credentials on a computer, then scan the QR code here to sign in.",
                     variant = LightTextVariant.Copy,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -125,14 +127,20 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 )
                 Spacer(modifier = Modifier.height(0.5f.gridUnitsAsDp()))
                 LightText(
-                    text = "2. Follow the steps there",
+                    text = "2. Follow the steps to create your Tesla developer app",
                     variant = LightTextVariant.Copy,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(0.5f.gridUnitsAsDp()))
                 LightText(
-                    text = "3. Scan the two QR codes it shows",
+                    text = "3. Enter your credentials and scan the QR code it shows",
                     variant = LightTextVariant.Copy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
+                LightText(
+                    text = "After scanning, you'll sign in to Tesla directly on this phone.",
+                    variant = LightTextVariant.Detail,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -150,44 +158,70 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
         }
     }
 
-    // ── Scan QR 2: auth token ───────────────────────────
+    // ── Sign In: full-screen WebView for Tesla OAuth ────
 
+    @SuppressLint("SetJavaScriptEnabled")
     @Composable
-    private fun ScanAuthContent() {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 1f.gridUnitsAsDp()),
-        ) {
-            LightTopBar(center = LightTopBarCenter.Text("Setup"))
+    private fun SignInContent(state: SetupUiState) {
+        val oauthUrl = state.oauthUrl ?: return
 
-            LightScrollView(modifier = Modifier.weight(1f)) {
-                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
+        // Full-screen WebView — no title, no header, no bottom bar.
+        // This gives maximum room for the Tesla sign-in page
+        // so the user can scroll to all fields and the keyboard
+        // doesn't block the inputs.
+        AndroidView(
+            factory = { context ->
+                // Enable cookies for Tesla auth session
+                CookieManager.getInstance().setAcceptCookie(true)
 
-                LightText(
-                    text = "Credentials Saved",
-                    variant = LightTextVariant.Title,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
-                LightText(
-                    text = "Now scan the second QR code from the setup page to complete sign-in.",
-                    variant = LightTextVariant.Copy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+                WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.setSupportZoom(true)
+                    settings.builtInZoomControls = true
+                    settings.displayZoomControls = false
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
 
-            LightBottomBar(
-                items = listOf(
-                    null,
-                    LightBarButton.Text(
-                        text = "SCAN QR CODE 2",
-                        onClick = { viewModel.showQrScanner() },
-                    ),
-                    null,
-                ),
-            )
-        }
+                    // Ensure the WebView can receive focus for keyboard input
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    requestFocus()
+
+                    // Accept third-party cookies (needed for Tesla OAuth)
+                    CookieManager.getInstance()
+                        .setAcceptThirdPartyCookies(this, true)
+
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                        ): Boolean {
+                            val url = request?.url?.toString() ?: return false
+                            // Intercept redirect to our domain
+                            if (url.startsWith(CredentialStore.REDIRECT_URI)) {
+                                val uri = request.url
+                                val code = uri.getQueryParameter("code")
+                                if (code != null) {
+                                    viewModel.onOAuthCodeReceived(code)
+                                } else {
+                                    val error =
+                                        uri.getQueryParameter("error_description")
+                                            ?: uri.getQueryParameter("error")
+                                            ?: "Sign-in was not completed"
+                                    viewModel.onOAuthError(error)
+                                }
+                                return true
+                            }
+                            return false
+                        }
+                    }
+
+                    loadUrl(oauthUrl)
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 
     // ── Processing: exchanging tokens ───────────────────

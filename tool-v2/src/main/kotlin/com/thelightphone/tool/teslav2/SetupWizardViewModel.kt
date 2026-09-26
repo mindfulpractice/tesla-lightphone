@@ -1,5 +1,6 @@
 package com.thelightphone.tool.teslav2
 
+import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.thelightphone.sdk.LightViewModel
@@ -10,11 +11,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.URLEncoder
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.UUID
 
-/** The simplified setup wizard steps. */
+/** Setup wizard steps: scan credentials QR, then sign in via WebView. */
 enum class SetupStep {
     Welcome,
-    ScanAuth,
+    SignIn,
     Processing,
     Done,
 }
@@ -26,6 +31,8 @@ data class SetupUiState(
     val statusMessages: List<String> = emptyList(),
     val showQrScanner: Boolean = false,
     val setupComplete: Boolean = false,
+    /** Tesla OAuth URL for the WebView to load. */
+    val oauthUrl: String? = null,
 )
 
 class SetupWizardViewModel(
@@ -37,14 +44,20 @@ class SetupWizardViewModel(
     private val _uiState = MutableStateFlow(SetupUiState())
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
-    // Temporarily hold auth code and verifier between QR scans
-    private var pendingAuthCode: String? = null
-    private var pendingCodeVerifier: String? = null
+    /** PKCE code verifier — generated fresh each sign-in attempt. */
+    private var codeVerifier: String? = null
 
     // ── Navigation ──────────────────────────────────────
 
     fun goToStep(step: SetupStep) {
-        _uiState.update { it.copy(step = step, errorModal = null, statusMessages = emptyList()) }
+        _uiState.update {
+            it.copy(
+                step = step,
+                errorModal = null,
+                statusMessages = emptyList(),
+                oauthUrl = null,
+            )
+        }
     }
 
     // ── QR scanning ─────────────────────────────────────
@@ -58,13 +71,11 @@ class SetupWizardViewModel(
     }
 
     /**
-     * Handles scanned QR codes. The desktop setup page generates two codes:
+     * Handles scanned QR codes. The desktop setup page generates one code:
      *
-     * QR 1 (credentials): {"t":"cred","i":"<client_id>","s":"<client_secret>"}
-     * QR 2 (auth):         {"t":"auth","a":"<auth_code>","v":"<code_verifier>"}
+     * Credentials QR: {"t":"cred","i":"<client_id>","s":"<client_secret>"}
      *
-     * After scanning QR 1, the app saves credentials and prompts for QR 2.
-     * After scanning QR 2, the app exchanges the auth code for tokens.
+     * After scanning, the app opens a WebView for Tesla OAuth sign-in.
      */
     fun onQrScanned(raw: String) {
         try {
@@ -73,11 +84,7 @@ class SetupWizardViewModel(
 
             when (type) {
                 "cred" -> handleCredentialQr(json)
-                "auth" -> handleAuthQr(json)
-                else -> {
-                    // Try legacy format (single QR with full keys)
-                    handleLegacyQr(json)
-                }
+                else -> handleLegacyQr(json)
             }
         } catch (e: Exception) {
             Log.e("SetupWizard", "QR parse error: ${e.message}")
@@ -90,7 +97,7 @@ class SetupWizardViewModel(
         }
     }
 
-    /** QR 1: credentials — save and prompt for QR 2. */
+    /** Credentials QR — save and open WebView for Tesla sign-in. */
     private fun handleCredentialQr(json: org.json.JSONObject) {
         val id = json.optString("i", "").trim()
         val secret = json.optString("s", "").trim()
@@ -99,7 +106,7 @@ class SetupWizardViewModel(
             _uiState.update {
                 it.copy(
                     showQrScanner = false,
-                    errorModal = "QR code is missing credentials. Scan the first QR code from the setup page.",
+                    errorModal = "QR code is missing credentials. Scan the QR code from the setup page.",
                 )
             }
             return
@@ -107,27 +114,60 @@ class SetupWizardViewModel(
 
         credentialStore.saveClientId(id)
         credentialStore.saveClientSecret(secret)
-        Log.i("SetupWizard", "Credentials saved from QR 1")
+        Log.i("SetupWizard", "Credentials saved from QR")
 
-        // Move to scan QR 2
+        // Generate PKCE and build OAuth URL
+        startOAuthFlow(id)
+    }
+
+    /** Legacy format with full key names. */
+    private fun handleLegacyQr(json: org.json.JSONObject) {
+        val id = json.optString("client_id", "").trim()
+        val secret = json.optString("client_secret", "").trim()
+
+        if (id.isNotBlank() && secret.isNotBlank()) {
+            credentialStore.saveClientId(id)
+            credentialStore.saveClientSecret(secret)
+            Log.i("SetupWizard", "Credentials saved from legacy QR")
+            startOAuthFlow(id)
+            return
+        }
+
         _uiState.update {
             it.copy(
                 showQrScanner = false,
-                step = SetupStep.ScanAuth,
+                errorModal = "Unrecognized QR code. Use the code from tesla-lightphone.app/setup.",
             )
         }
     }
 
-    /** QR 2: auth code + verifier — exchange tokens and finish. */
-    private fun handleAuthQr(json: org.json.JSONObject) {
-        val authCode = json.optString("a", "").trim()
-        val codeVerifier = json.optString("v", "").trim()
+    // ── OAuth via WebView ───────────────────────────────
 
-        if (authCode.isBlank() || codeVerifier.isBlank()) {
+    /** Generate PKCE parameters and build the Tesla OAuth URL. */
+    private fun startOAuthFlow(clientId: String) {
+        val verifier = generateCodeVerifier()
+        codeVerifier = verifier
+        val challenge = generateCodeChallenge(verifier)
+        val url = buildOAuthUrl(clientId, challenge)
+
+        _uiState.update {
+            it.copy(
+                showQrScanner = false,
+                step = SetupStep.SignIn,
+                oauthUrl = url,
+            )
+        }
+    }
+
+    /** Called when the WebView intercepts the redirect with an auth code. */
+    fun onOAuthCodeReceived(code: String) {
+        val verifier = codeVerifier
+        if (verifier == null) {
             _uiState.update {
                 it.copy(
-                    showQrScanner = false,
-                    errorModal = "QR code is missing sign-in data. Scan the second QR code from the setup page.",
+                    step = SetupStep.Welcome,
+                    oauthUrl = null,
+                    errorModal = "Sign-in session expired. Please scan the QR code again.",
                 )
             }
             return
@@ -135,52 +175,80 @@ class SetupWizardViewModel(
 
         _uiState.update {
             it.copy(
-                showQrScanner = false,
                 step = SetupStep.Processing,
+                oauthUrl = null,
                 isLoading = true,
-                statusMessages = listOf("✓ Credentials saved", "Signing in..."),
+                statusMessages = listOf(
+                    "✓ Credentials saved",
+                    "✓ Signed in to Tesla",
+                    "Exchanging tokens...",
+                ),
             )
         }
 
-        exchangeAndFinish(authCode, codeVerifier)
+        exchangeAndFinish(code, verifier)
     }
 
-    /** Fallback: handles old single-QR format with full key names. */
-    private fun handleLegacyQr(json: org.json.JSONObject) {
-        val id = json.optString("client_id", "").trim()
-        val secret = json.optString("client_secret", "").trim()
-        val authCode = json.optString("auth_code", "").trim()
-        val codeVerifier = json.optString("code_verifier", "").trim()
-
-        if (id.isNotBlank() && secret.isNotBlank()) {
-            credentialStore.saveClientId(id)
-            credentialStore.saveClientSecret(secret)
-
-            if (authCode.isNotBlank() && codeVerifier.isNotBlank()) {
-                _uiState.update {
-                    it.copy(
-                        showQrScanner = false,
-                        step = SetupStep.Processing,
-                        isLoading = true,
-                        statusMessages = listOf("✓ Credentials saved", "Signing in..."),
-                    )
-                }
-                exchangeAndFinish(authCode, codeVerifier)
-            } else {
-                _uiState.update {
-                    it.copy(showQrScanner = false, step = SetupStep.ScanAuth)
-                }
-            }
-            return
-        }
-
+    /** Called when the WebView redirect contains an error. */
+    fun onOAuthError(error: String) {
+        Log.e("SetupWizard", "OAuth error: $error")
         _uiState.update {
             it.copy(
-                showQrScanner = false,
-                errorModal = "Unrecognized QR code. Use the codes from tesla-lightphone.app/setup.",
+                step = SetupStep.Welcome,
+                oauthUrl = null,
+                errorModal = "Tesla sign-in failed: $error\n\nPlease try again.",
             )
         }
     }
+
+    /** Cancel sign-in and return to Welcome. */
+    fun cancelSignIn() {
+        codeVerifier = null
+        _uiState.update {
+            it.copy(
+                step = SetupStep.Welcome,
+                oauthUrl = null,
+            )
+        }
+    }
+
+    // ── PKCE helpers ────────────────────────────────────
+
+    private fun generateCodeVerifier(): String {
+        val bytes = ByteArray(32)
+        SecureRandom().nextBytes(bytes)
+        return Base64.encodeToString(
+            bytes,
+            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING,
+        )
+    }
+
+    private fun generateCodeChallenge(verifier: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(verifier.toByteArray(Charsets.US_ASCII))
+        return Base64.encodeToString(
+            digest,
+            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING,
+        )
+    }
+
+    private fun buildOAuthUrl(clientId: String, codeChallenge: String): String {
+        val params = listOf(
+            "response_type" to "code",
+            "client_id" to clientId,
+            "redirect_uri" to CredentialStore.REDIRECT_URI,
+            "scope" to "openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds",
+            "state" to UUID.randomUUID().toString(),
+            "code_challenge" to codeChallenge,
+            "code_challenge_method" to "S256",
+        )
+        val query = params.joinToString("&") { (k, v) ->
+            "$k=${URLEncoder.encode(v, "UTF-8")}"
+        }
+        return "https://auth.tesla.com/oauth2/v3/authorize?$query"
+    }
+
+    // ── Token exchange ──────────────────────────────────
 
     /**
      * Exchanges the OAuth auth code for tokens, fetches vehicles,
@@ -188,7 +256,6 @@ class SetupWizardViewModel(
      */
     private fun exchangeAndFinish(authCode: String, codeVerifier: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Exchange auth code for access + refresh tokens
             val tokenResult = api.exchangeAuthCode(authCode, codeVerifier)
 
             if (tokenResult.isFailure) {
@@ -198,7 +265,7 @@ class SetupWizardViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorModal = "Sign-in failed: $error\n\nPlease redo the setup on the desktop page and scan new QR codes.",
+                            errorModal = "Sign-in failed: $error\n\nPlease scan the QR code and try again.",
                         )
                     }
                 }
@@ -210,11 +277,22 @@ class SetupWizardViewModel(
                     it.copy(
                         statusMessages = listOf(
                             "✓ Credentials saved",
-                            "✓ Signed in",
+                            "✓ Signed in to Tesla",
+                            "✓ Tokens received",
                             "Finding your vehicles...",
                         ),
                     )
                 }
+            }
+
+            // Register domain (partner account) — best effort
+            try {
+                val partnerResult = api.getPartnerToken()
+                partnerResult.getOrNull()?.let { partnerToken ->
+                    api.registerDomain(partnerToken)
+                }
+            } catch (e: Exception) {
+                Log.w("SetupWizard", "Partner registration skipped: ${e.message}")
             }
 
             // Fetch vehicles and select the first one
@@ -223,7 +301,10 @@ class SetupWizardViewModel(
                 onSuccess = { vehicles ->
                     val vehicle = vehicles.firstOrNull()
                     if (vehicle != null) {
-                        tokenStore.saveSelectedVehicle(vehicle.vin, vehicle.displayName ?: "My Tesla")
+                        tokenStore.saveSelectedVehicle(
+                            vehicle.vin,
+                            vehicle.displayName ?: "My Tesla",
+                        )
                     }
                     credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
@@ -234,6 +315,7 @@ class SetupWizardViewModel(
                 },
                 onFailure = { error ->
                     Log.w("SetupWizard", "Vehicle fetch failed: ${error.message}")
+                    // Still complete setup — user can retry vehicle fetch later
                     credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
                         _uiState.update {

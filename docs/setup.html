@@ -89,13 +89,6 @@
             text-decoration: none;
         }
         .btn:hover { background: #333; }
-        .btn:disabled { background: #999; cursor: not-allowed; }
-        .btn-outline {
-            background: #fff;
-            color: #1a1a1a;
-            border: 1px solid #ddd;
-        }
-        .btn-outline:hover { background: #f5f5f5; }
         .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
         canvas { max-width: 280px; width: 100%; height: auto; }
         .status-msg {
@@ -131,7 +124,7 @@
             position: relative;
         }
         .checklist li::before {
-            content: "→";
+            content: "\2192";
             position: absolute;
             left: 0;
         }
@@ -140,7 +133,7 @@
 <body>
     <div class="container">
         <h1>Tesla for Light Phone</h1>
-        <p class="subtitle">Complete these steps on this computer, then scan one QR code on your Light Phone.</p>
+        <p class="subtitle">Set up your credentials here, then scan the QR code on your Light Phone to finish.</p>
 
         <!-- Step 1: Developer Account -->
         <div class="step active" id="step1">
@@ -178,61 +171,27 @@
             <label for="client-secret">Client Secret</label>
             <input type="password" id="client-secret" placeholder="Paste your Client Secret">
             <div class="btn-row">
-                <button class="btn" onclick="saveCredentials()">Save & Continue</button>
+                <button class="btn" onclick="saveCredentials()">Generate QR Code</button>
             </div>
             <div id="cred-status"></div>
         </div>
 
-        <!-- Step 3: Pair Virtual Key -->
+        <!-- Step 3: QR Code -->
         <div class="step locked" id="step3">
             <div class="step-header">
                 <div class="step-num">3</div>
-                <div class="step-title">Pair Virtual Key</div>
+                <div class="step-title">Scan QR on Light Phone</div>
             </div>
-            <p>This lets the Light Phone app send commands to your car. Click the button below — Tesla will ask you to approve through the <strong>Tesla app on your smartphone</strong>.</p>
-            <p>Make sure you have the Tesla app installed on your smartphone (not the Light Phone).</p>
-            <div class="btn-row">
-                <a class="btn" id="pair-link" href="#" target="_blank">Pair Virtual Key</a>
-                <button class="btn btn-outline" onclick="completeStep3()">Done — Key Paired</button>
-            </div>
-        </div>
-
-        <!-- Step 4: Sign In -->
-        <div class="step locked" id="step4">
-            <div class="step-header">
-                <div class="step-num">4</div>
-                <div class="step-title">Sign In with Tesla</div>
-            </div>
-            <p>Sign into your Tesla account to authorize the Light Phone app. You'll be redirected to Tesla and then back here.</p>
-            <div class="btn-row">
-                <button class="btn" id="signin-btn" onclick="startOAuth()">Sign In with Tesla</button>
-            </div>
-            <div id="oauth-status"></div>
-        </div>
-
-        <!-- Step 5: QR Codes -->
-        <div class="step locked" id="step5">
-            <div class="step-header">
-                <div class="step-num">5</div>
-                <div class="step-title">Scan QR Codes on Light Phone</div>
-            </div>
-            <p>Open the <strong>Tesla v2</strong> app on your Light Phone and tap <strong>Scan QR Code</strong>. You will scan two codes:</p>
-
-            <div id="qr1-container" style="display:none; text-align:center; padding:1.5rem; background:#fff; border-radius:12px; border:2px solid #1a1a1a; margin-top:1rem;">
-                <p style="font-weight:600; margin-bottom:0.75rem;">QR 1 of 2 — Credentials</p>
-                <canvas id="qr1-canvas" style="max-width:280px; width:100%; height:auto;"></canvas>
-                <p style="margin-top:0.75rem; font-size:0.85rem; color:#666;">Scan this first, then the app will ask for the second code.</p>
-            </div>
-
-            <div id="qr2-container" style="display:none; text-align:center; padding:1.5rem; background:#fff; border-radius:12px; border:2px solid #22c55e; margin-top:1rem;">
-                <p style="font-weight:600; margin-bottom:0.75rem;">QR 2 of 2 — Sign-In Token</p>
-                <canvas id="qr2-canvas" style="max-width:280px; width:100%; height:auto;"></canvas>
-                <p style="margin-top:0.75rem; font-size:0.85rem; color:#666;">Scan this second code to complete setup.</p>
+            <p>Open the <strong>Tesla v2</strong> app on your Light Phone, tap <strong>Scan QR Code</strong>, and point the camera at this code.</p>
+            <p>After scanning, the app will ask you to sign in with Tesla directly on your phone.</p>
+            <div id="qr-container" style="display:none; text-align:center; padding:1.5rem; background:#fff; border-radius:12px; border:2px solid #22c55e; margin-top:1rem;">
+                <canvas id="qr-canvas"></canvas>
+                <p style="margin-top:0.75rem; font-size:0.85rem; color:#666; line-height:1.5;">Point your Light Phone camera at this code.</p>
             </div>
         </div>
 
         <div class="privacy-note">
-            <strong>Privacy:</strong> Everything happens in your browser. Your credentials and tokens are never sent to any server other than Tesla's. You can verify this in the <a href="https://github.com/mindfulpractice/tesla-lightphone" target="_blank">source code</a>.
+            <strong>Privacy:</strong> Your credentials stay in your browser and on your phone. Nothing is sent to any server other than Tesla's. You can verify this in the <a href="https://github.com/mindfulpractice/tesla-lightphone" target="_blank">source code</a>.
         </div>
     </div>
 
@@ -241,46 +200,6 @@
 
     let savedClientId = '';
     let savedClientSecret = '';
-    let authCode = null;
-    let codeVerifier = null;
-
-    const DOMAIN = 'tesla-lightphone.app';
-    const REDIRECT_URI = 'https://tesla-lightphone.app/setup';
-
-    // ── On page load, check for OAuth redirect ─────────
-
-    window.addEventListener('DOMContentLoaded', () => {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-
-        if (code) {
-            // We got redirected back from Tesla with an auth code
-            authCode = code;
-            codeVerifier = sessionStorage.getItem('pkce_verifier');
-            savedClientId = sessionStorage.getItem('client_id') || '';
-            savedClientSecret = sessionStorage.getItem('client_secret') || '';
-
-            // Clean URL
-            window.history.replaceState({}, '', '/setup');
-
-            // Restore UI to step 5
-            if (savedClientId && savedClientSecret && codeVerifier) {
-                document.getElementById('client-id').value = savedClientId;
-                document.getElementById('client-secret').value = savedClientSecret;
-                completeStep(1);
-                completeStep(2);
-                completeStep(3);
-                completeStep(4);
-                activateStep(5);
-                generateQR();
-                document.getElementById('oauth-status').innerHTML =
-                    '<div class="status-msg">Signed in with Tesla.</div>';
-            } else {
-                document.getElementById('oauth-status').innerHTML =
-                    '<div class="status-msg error">Something went wrong. Please start over.</div>';
-            }
-        }
-    });
 
     // ── Step navigation ────────────────────────────────
 
@@ -294,11 +213,10 @@
         const el = document.getElementById('step' + n);
         el.classList.remove('active', 'locked');
         el.classList.add('completed');
-        const numEl = el.querySelector('.step-num');
-        numEl.textContent = '✓';
+        el.querySelector('.step-num').textContent = '✓';
     }
 
-    // ── Step 2: Save credentials ───────────────────────
+    // ── Step 2: Save credentials & generate QR ─────────
 
     function saveCredentials() {
         savedClientId = document.getElementById('client-id').value.trim();
@@ -310,103 +228,35 @@
             return;
         }
 
-        // Store in sessionStorage so they survive the OAuth redirect
-        sessionStorage.setItem('client_id', savedClientId);
-        sessionStorage.setItem('client_secret', savedClientSecret);
-
         document.getElementById('cred-status').innerHTML =
             '<div class="status-msg">Credentials saved.</div>';
 
         completeStep(2);
-
-        // Set up the pair link
-        document.getElementById('pair-link').href =
-            'https://tesla.com/_ak/' + DOMAIN;
-
         activateStep(3);
+        generateQR();
     }
 
-    // ── Step 3: Key pairing done ───────────────────────
-
-    function completeStep3() {
-        completeStep(3);
-        activateStep(4);
-    }
-
-    // ── Step 4: OAuth with PKCE ────────────────────────
-
-    function generateCodeVerifier() {
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        return base64urlEncode(array);
-    }
-
-    async function startOAuth() {
-        codeVerifier = generateCodeVerifier();
-
-        const encoder = new TextEncoder();
-        const data = encoder.encode(codeVerifier);
-        const hash = await crypto.subtle.digest('SHA-256', data);
-        const challenge = base64urlEncode(new Uint8Array(hash));
-
-        sessionStorage.setItem('pkce_verifier', codeVerifier);
-
-        const authUrl = 'https://auth.tesla.com/oauth2/v3/authorize'
-            + '?client_id=' + encodeURIComponent(savedClientId)
-            + '&redirect_uri=' + encodeURIComponent(REDIRECT_URI)
-            + '&response_type=code'
-            + '&scope=openid+vehicle_device_data+vehicle_cmds+vehicle_charging_cmds+offline_access'
-            + '&code_challenge=' + challenge
-            + '&code_challenge_method=S256'
-            + '&state=setup';
-
-        window.location.href = authUrl;
-    }
-
-    function base64urlEncode(buffer) {
-        let str = '';
-        for (const byte of buffer) {
-            str += String.fromCharCode(byte);
-        }
-        return btoa(str)
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
-    }
-
-    // ── Step 5: Generate QR ────────────────────────────
+    // ── Step 3: Generate QR (credentials only) ─────────
 
     function generateQR() {
-        // QR 1: credentials only (small, easy to scan)
-        const creds = JSON.stringify({
+        const payload = JSON.stringify({
             t: 'cred',
             i: savedClientId,
             s: savedClientSecret,
         });
-        const canvas1 = document.getElementById('qr1-canvas');
-        drawQR(canvas1, creds);
-        document.getElementById('qr1-container').style.display = 'block';
 
-        // QR 2: auth data only
-        const auth = JSON.stringify({
-            t: 'auth',
-            a: authCode,
-            v: codeVerifier,
-        });
-        const canvas2 = document.getElementById('qr2-canvas');
-        drawQR(canvas2, auth);
-        document.getElementById('qr2-container').style.display = 'block';
+        const canvas = document.getElementById('qr-canvas');
+        drawQR(canvas, payload);
+        document.getElementById('qr-container').style.display = 'block';
     }
 
     // ── Toggle details ─────────────────────────────────
 
     function toggleDetails(id) {
-        const el = document.getElementById(id);
-        el.classList.toggle('show');
+        document.getElementById(id).classList.toggle('show');
     }
 
     // ── QR Code Generator ──────────────────────────────
-    // Minimal inline QR encoder — no external dependencies
 
     function drawQR(canvas, text) {
         const qr = generateQRMatrix(text);
