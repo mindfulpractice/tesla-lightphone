@@ -23,6 +23,12 @@ class HomeScreenViewModel(
     private var startCountdownJob: kotlinx.coroutines.Job? = null
     private var authJob: kotlinx.coroutines.Job? = null
 
+    /**
+     * When true, the next checkAuth call skips the token refresh —
+     * tokens are fresh from the setup wizard.
+     */
+    private var skipNextRefresh = false
+
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
         checkAuth()
@@ -30,6 +36,9 @@ class HomeScreenViewModel(
 
     private fun checkAuth() {
         authJob?.cancel()
+        val freshTokens = skipNextRefresh
+        skipNextRefresh = false
+
         authJob = viewModelScope.launch(Dispatchers.IO) {
             if (!credentialStore.isSetupComplete() || !tokenStore.hasToken()) {
                 withContext(Dispatchers.Main) {
@@ -38,51 +47,54 @@ class HomeScreenViewModel(
                 return@launch
             }
 
-            // Refresh access token on startup — retry once before giving up
-            var refreshResult = api.refreshAccessToken()
-            if (refreshResult.isFailure) {
-                kotlinx.coroutines.delay(2000)
-                refreshResult = api.refreshAccessToken()
-            }
-            if (refreshResult.isFailure) {
-                val error = refreshResult.exceptionOrNull()
-                val isAuthError = error?.message?.contains("401") == true ||
-                    error?.message?.contains("invalid_grant") == true ||
-                    error?.message?.contains("Auth failed") == true
-                if (isAuthError) {
-                    // Genuine auth rejection — tokens are invalid, must re-authenticate
-                    tokenStore.clear()
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = TeslaUiState(
-                            mode = TeslaScreenMode.NeedsSetup,
-                            errorModal = "Session expired. Run setup again to reconnect.",
-                        )
-                    }
-                } else {
-                    // Network error — keep tokens, show controls with an error
-                    val vin = tokenStore.getSelectedVin()
-                    val name = tokenStore.getVehicleName() ?: ""
-                    if (vin != null) {
-                        val controls = tokenStore.getControls()
-                        val units = tokenStore.getUnits()
-                        withContext(Dispatchers.Main) {
-                            _uiState.value = TeslaUiState(
-                                mode = TeslaScreenMode.Controls(vehicleName = name),
-                                controlSettings = controls,
-                                units = units,
-                                errorModal = "No internet — check your connection.",
-                            )
-                        }
-                    } else {
+            // Skip refresh when tokens were just obtained in the setup wizard
+            if (!freshTokens) {
+                // Refresh access token on startup — retry once before giving up
+                var refreshResult = api.refreshAccessToken()
+                if (refreshResult.isFailure) {
+                    kotlinx.coroutines.delay(2000)
+                    refreshResult = api.refreshAccessToken()
+                }
+                if (refreshResult.isFailure) {
+                    val error = refreshResult.exceptionOrNull()
+                    val isAuthError = error?.message?.contains("401") == true ||
+                        error?.message?.contains("invalid_grant") == true ||
+                        error?.message?.contains("Auth failed") == true
+                    if (isAuthError) {
+                        // Genuine auth rejection — tokens are invalid, must re-authenticate
+                        tokenStore.clear()
                         withContext(Dispatchers.Main) {
                             _uiState.value = TeslaUiState(
                                 mode = TeslaScreenMode.NeedsSetup,
-                                errorModal = "No internet — check your connection.",
+                                errorModal = "Session expired. Run setup again to reconnect.",
                             )
                         }
+                    } else {
+                        // Network error — keep tokens, show controls with an error
+                        val vin = tokenStore.getSelectedVin()
+                        val name = tokenStore.getVehicleName() ?: ""
+                        if (vin != null) {
+                            val controls = tokenStore.getControls()
+                            val units = tokenStore.getUnits()
+                            withContext(Dispatchers.Main) {
+                                _uiState.value = TeslaUiState(
+                                    mode = TeslaScreenMode.Controls(vehicleName = name),
+                                    controlSettings = controls,
+                                    units = units,
+                                    errorModal = "No internet — check your connection.",
+                                )
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                _uiState.value = TeslaUiState(
+                                    mode = TeslaScreenMode.NeedsSetup,
+                                    errorModal = "No internet — check your connection.",
+                                )
+                            }
+                        }
                     }
+                    return@launch
                 }
-                return@launch
             }
 
             // Fetch vehicles if we don't have one selected yet
@@ -140,6 +152,9 @@ class HomeScreenViewModel(
     }
 
     fun onTokenSaved() {
+        // Tokens are fresh from setup — skip the refresh attempt
+        // to avoid invalidating a just-issued refresh token.
+        skipNextRefresh = true
         checkAuth()
     }
 
