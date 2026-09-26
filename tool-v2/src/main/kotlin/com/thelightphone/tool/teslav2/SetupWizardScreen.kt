@@ -60,10 +60,26 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                     .fillMaxSize()
                     .background(LightThemeTokens.colors.background),
             ) {
-                when (state.step) {
-                    SetupStep.Welcome -> WelcomeContent(state)
-                    SetupStep.Processing -> ProcessingContent(state)
-                    SetupStep.Done -> DoneContent()
+                // Show QR scanner full-screen when active (any step)
+                if (state.showQrScanner) {
+                    val title = when (state.step) {
+                        SetupStep.Welcome -> "Scan QR 1: Credentials"
+                        SetupStep.ScanAuth -> "Scan QR 2: Sign-In"
+                        else -> "Scan QR"
+                    }
+                    LightQrCodeScanner(
+                        title = title,
+                        onScanned = { viewModel.onQrScanned(it) },
+                        onBack = { viewModel.hideQrScanner() },
+                        modifier = Modifier.background(LightThemeTokens.colors.background),
+                    )
+                } else {
+                    when (state.step) {
+                        SetupStep.Welcome -> WelcomeContent()
+                        SetupStep.ScanAuth -> ScanAuthContent()
+                        SetupStep.Processing -> ProcessingContent(state)
+                        SetupStep.Done -> DoneContent()
+                    }
                 }
 
                 state.errorModal?.let { message ->
@@ -76,21 +92,10 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
         }
     }
 
-    // ── Welcome: instructions + Scan QR ─────────────────
+    // ── Welcome: instructions + Scan QR 1 ───────────────
 
     @Composable
-    private fun WelcomeContent(state: SetupUiState) {
-        // Show QR scanner full-screen when active
-        if (state.showQrScanner) {
-            LightQrCodeScanner(
-                title = "Scan Setup QR",
-                onScanned = { viewModel.onQrScanned(it) },
-                onBack = { viewModel.hideQrScanner() },
-                modifier = Modifier.background(LightThemeTokens.colors.background),
-            )
-            return
-        }
-
+    private fun WelcomeContent() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -108,7 +113,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 )
                 Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
                 LightText(
-                    text = "Complete the setup on a computer, then scan the QR code here.",
+                    text = "Complete the setup on a computer, then scan the QR codes here.",
                     variant = LightTextVariant.Copy,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -126,7 +131,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 )
                 Spacer(modifier = Modifier.height(0.5f.gridUnitsAsDp()))
                 LightText(
-                    text = "3. Scan the QR code it shows",
+                    text = "3. Scan the two QR codes it shows",
                     variant = LightTextVariant.Copy,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -137,6 +142,46 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                     null,
                     LightBarButton.Text(
                         text = "SCAN QR CODE",
+                        onClick = { viewModel.showQrScanner() },
+                    ),
+                    null,
+                ),
+            )
+        }
+    }
+
+    // ── Scan QR 2: auth token ───────────────────────────
+
+    @Composable
+    private fun ScanAuthContent() {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 1f.gridUnitsAsDp()),
+        ) {
+            LightTopBar(center = LightTopBarCenter.Text("Setup"))
+
+            LightScrollView(modifier = Modifier.weight(1f)) {
+                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
+
+                LightText(
+                    text = "Credentials Saved",
+                    variant = LightTextVariant.Title,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
+                LightText(
+                    text = "Now scan the second QR code from the setup page to complete sign-in.",
+                    variant = LightTextVariant.Copy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            LightBottomBar(
+                items = listOf(
+                    null,
+                    LightBarButton.Text(
+                        text = "SCAN QR CODE 2",
                         onClick = { viewModel.showQrScanner() },
                     ),
                     null,

@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 /** The simplified setup wizard steps. */
 enum class SetupStep {
     Welcome,
+    ScanAuth,
     Processing,
     Done,
 }
@@ -36,6 +37,10 @@ class SetupWizardViewModel(
     private val _uiState = MutableStateFlow(SetupUiState())
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
+    // Temporarily hold auth code and verifier between QR scans
+    private var pendingAuthCode: String? = null
+    private var pendingCodeVerifier: String? = null
+
     // ── Navigation ──────────────────────────────────────
 
     fun goToStep(step: SetupStep) {
@@ -53,63 +58,27 @@ class SetupWizardViewModel(
     }
 
     /**
-     * Called when the QR scanner reads the code from the desktop setup page.
-     * Expected JSON: {
-     *   "client_id": "...",
-     *   "client_secret": "...",
-     *   "auth_code": "...",
-     *   "code_verifier": "..."
-     * }
+     * Handles scanned QR codes. The desktop setup page generates two codes:
      *
-     * The desktop page has already completed OAuth — we just need to
-     * save credentials, exchange the auth code for tokens, fetch
-     * vehicles, and finish.
+     * QR 1 (credentials): {"t":"cred","i":"<client_id>","s":"<client_secret>"}
+     * QR 2 (auth):         {"t":"auth","a":"<auth_code>","v":"<code_verifier>"}
+     *
+     * After scanning QR 1, the app saves credentials and prompts for QR 2.
+     * After scanning QR 2, the app exchanges the auth code for tokens.
      */
     fun onQrScanned(raw: String) {
         try {
             val json = org.json.JSONObject(raw.trim())
-            val clientId = json.optString("client_id", "").trim()
-            val clientSecret = json.optString("client_secret", "").trim()
-            val authCode = json.optString("auth_code", "").trim()
-            val codeVerifier = json.optString("code_verifier", "").trim()
+            val type = json.optString("t", "")
 
-            if (clientId.isBlank() || clientSecret.isBlank()) {
-                _uiState.update {
-                    it.copy(
-                        showQrScanner = false,
-                        errorModal = "QR code is missing credentials. Make sure you completed all steps on the setup page.",
-                    )
+            when (type) {
+                "cred" -> handleCredentialQr(json)
+                "auth" -> handleAuthQr(json)
+                else -> {
+                    // Try legacy format (single QR with full keys)
+                    handleLegacyQr(json)
                 }
-                return
             }
-
-            if (authCode.isBlank() || codeVerifier.isBlank()) {
-                _uiState.update {
-                    it.copy(
-                        showQrScanner = false,
-                        errorModal = "QR code is missing sign-in data. Make sure you signed in with Tesla on the setup page.",
-                    )
-                }
-                return
-            }
-
-            // Hide scanner, move to processing screen
-            _uiState.update {
-                it.copy(
-                    showQrScanner = false,
-                    step = SetupStep.Processing,
-                    isLoading = true,
-                    statusMessages = listOf("Saving credentials..."),
-                )
-            }
-
-            // Save credentials
-            credentialStore.saveClientId(clientId)
-            credentialStore.saveClientSecret(clientSecret)
-            Log.i("SetupWizard", "Credentials saved from QR")
-
-            // Exchange auth code for tokens and finish setup
-            exchangeAndFinish(authCode, codeVerifier)
         } catch (e: Exception) {
             Log.e("SetupWizard", "QR parse error: ${e.message}")
             _uiState.update {
@@ -121,23 +90,104 @@ class SetupWizardViewModel(
         }
     }
 
+    /** QR 1: credentials — save and prompt for QR 2. */
+    private fun handleCredentialQr(json: org.json.JSONObject) {
+        val id = json.optString("i", "").trim()
+        val secret = json.optString("s", "").trim()
+
+        if (id.isBlank() || secret.isBlank()) {
+            _uiState.update {
+                it.copy(
+                    showQrScanner = false,
+                    errorModal = "QR code is missing credentials. Scan the first QR code from the setup page.",
+                )
+            }
+            return
+        }
+
+        credentialStore.saveClientId(id)
+        credentialStore.saveClientSecret(secret)
+        Log.i("SetupWizard", "Credentials saved from QR 1")
+
+        // Move to scan QR 2
+        _uiState.update {
+            it.copy(
+                showQrScanner = false,
+                step = SetupStep.ScanAuth,
+            )
+        }
+    }
+
+    /** QR 2: auth code + verifier — exchange tokens and finish. */
+    private fun handleAuthQr(json: org.json.JSONObject) {
+        val authCode = json.optString("a", "").trim()
+        val codeVerifier = json.optString("v", "").trim()
+
+        if (authCode.isBlank() || codeVerifier.isBlank()) {
+            _uiState.update {
+                it.copy(
+                    showQrScanner = false,
+                    errorModal = "QR code is missing sign-in data. Scan the second QR code from the setup page.",
+                )
+            }
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                showQrScanner = false,
+                step = SetupStep.Processing,
+                isLoading = true,
+                statusMessages = listOf("✓ Credentials saved", "Signing in..."),
+            )
+        }
+
+        exchangeAndFinish(authCode, codeVerifier)
+    }
+
+    /** Fallback: handles old single-QR format with full key names. */
+    private fun handleLegacyQr(json: org.json.JSONObject) {
+        val id = json.optString("client_id", "").trim()
+        val secret = json.optString("client_secret", "").trim()
+        val authCode = json.optString("auth_code", "").trim()
+        val codeVerifier = json.optString("code_verifier", "").trim()
+
+        if (id.isNotBlank() && secret.isNotBlank()) {
+            credentialStore.saveClientId(id)
+            credentialStore.saveClientSecret(secret)
+
+            if (authCode.isNotBlank() && codeVerifier.isNotBlank()) {
+                _uiState.update {
+                    it.copy(
+                        showQrScanner = false,
+                        step = SetupStep.Processing,
+                        isLoading = true,
+                        statusMessages = listOf("✓ Credentials saved", "Signing in..."),
+                    )
+                }
+                exchangeAndFinish(authCode, codeVerifier)
+            } else {
+                _uiState.update {
+                    it.copy(showQrScanner = false, step = SetupStep.ScanAuth)
+                }
+            }
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                showQrScanner = false,
+                errorModal = "Unrecognized QR code. Use the codes from tesla-lightphone.app/setup.",
+            )
+        }
+    }
+
     /**
      * Exchanges the OAuth auth code for tokens, fetches vehicles,
      * and completes setup.
      */
     private fun exchangeAndFinish(authCode: String, codeVerifier: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                _uiState.update {
-                    it.copy(
-                        statusMessages = listOf(
-                            "✓ Credentials saved",
-                            "Exchanging auth code...",
-                        ),
-                    )
-                }
-            }
-
             // Exchange auth code for access + refresh tokens
             val tokenResult = api.exchangeAuthCode(authCode, codeVerifier)
 
@@ -148,7 +198,7 @@ class SetupWizardViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorModal = "Sign-in failed: $error\n\nPlease redo the setup on the desktop page and scan a new QR code.",
+                            errorModal = "Sign-in failed: $error\n\nPlease redo the setup on the desktop page and scan new QR codes.",
                         )
                     }
                 }
@@ -178,23 +228,16 @@ class SetupWizardViewModel(
                     credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
                         _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                step = SetupStep.Done,
-                            )
+                            it.copy(isLoading = false, step = SetupStep.Done)
                         }
                     }
                 },
                 onFailure = { error ->
-                    // Tokens saved — vehicle fetch can be retried from HomeScreen
                     Log.w("SetupWizard", "Vehicle fetch failed: ${error.message}")
                     credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
                         _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                step = SetupStep.Done,
-                            )
+                            it.copy(isLoading = false, step = SetupStep.Done)
                         }
                     }
                 },

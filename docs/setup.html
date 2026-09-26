@@ -97,21 +97,6 @@
         }
         .btn-outline:hover { background: #f5f5f5; }
         .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
-        #qr-container {
-            display: none;
-            text-align: center;
-            padding: 1.5rem;
-            background: #fff;
-            border-radius: 12px;
-            border: 2px solid #22c55e;
-            margin-top: 1rem;
-        }
-        #qr-container p {
-            margin-top: 0.75rem;
-            font-size: 0.85rem;
-            color: #666;
-            line-height: 1.5;
-        }
         canvas { max-width: 280px; width: 100%; height: auto; }
         .status-msg {
             font-size: 0.85rem;
@@ -225,16 +210,24 @@
             <div id="oauth-status"></div>
         </div>
 
-        <!-- Step 5: QR Code -->
+        <!-- Step 5: QR Codes -->
         <div class="step locked" id="step5">
             <div class="step-header">
                 <div class="step-num">5</div>
-                <div class="step-title">Scan QR on Light Phone</div>
+                <div class="step-title">Scan QR Codes on Light Phone</div>
             </div>
-            <p>Open the <strong>Tesla v2</strong> app on your Light Phone and tap <strong>Scan QR</strong>.</p>
-            <div id="qr-container">
-                <canvas id="qr-canvas"></canvas>
-                <p>Point your Light Phone camera at this code.</p>
+            <p>Open the <strong>Tesla v2</strong> app on your Light Phone and tap <strong>Scan QR Code</strong>. You will scan two codes:</p>
+
+            <div id="qr1-container" style="display:none; text-align:center; padding:1.5rem; background:#fff; border-radius:12px; border:2px solid #1a1a1a; margin-top:1rem;">
+                <p style="font-weight:600; margin-bottom:0.75rem;">QR 1 of 2 — Credentials</p>
+                <canvas id="qr1-canvas" style="max-width:280px; width:100%; height:auto;"></canvas>
+                <p style="margin-top:0.75rem; font-size:0.85rem; color:#666;">Scan this first, then the app will ask for the second code.</p>
+            </div>
+
+            <div id="qr2-container" style="display:none; text-align:center; padding:1.5rem; background:#fff; border-radius:12px; border:2px solid #22c55e; margin-top:1rem;">
+                <p style="font-weight:600; margin-bottom:0.75rem;">QR 2 of 2 — Sign-In Token</p>
+                <canvas id="qr2-canvas" style="max-width:280px; width:100%; height:auto;"></canvas>
+                <p style="margin-top:0.75rem; font-size:0.85rem; color:#666;">Scan this second code to complete setup.</p>
             </div>
         </div>
 
@@ -384,16 +377,25 @@
     // ── Step 5: Generate QR ────────────────────────────
 
     function generateQR() {
-        const payload = JSON.stringify({
-            client_id: savedClientId,
-            client_secret: savedClientSecret,
-            auth_code: authCode,
-            code_verifier: codeVerifier,
+        // QR 1: credentials only (small, easy to scan)
+        const creds = JSON.stringify({
+            t: 'cred',
+            i: savedClientId,
+            s: savedClientSecret,
         });
+        const canvas1 = document.getElementById('qr1-canvas');
+        drawQR(canvas1, creds);
+        document.getElementById('qr1-container').style.display = 'block';
 
-        const canvas = document.getElementById('qr-canvas');
-        drawQR(canvas, payload);
-        document.getElementById('qr-container').style.display = 'block';
+        // QR 2: auth data only
+        const auth = JSON.stringify({
+            t: 'auth',
+            a: authCode,
+            v: codeVerifier,
+        });
+        const canvas2 = document.getElementById('qr2-canvas');
+        drawQR(canvas2, auth);
+        document.getElementById('qr2-container').style.display = 'block';
     }
 
     // ── Toggle details ─────────────────────────────────
