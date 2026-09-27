@@ -40,9 +40,11 @@ Tesla requires every developer app to list a website, but your credentials never
 
 ### Why your own developer account?
 
-- **Privacy** — Your Tesla credentials are never shared with anyone, not even the app developer.
-- **No costs** — Tesla gives every developer account a free monthly API allowance that covers normal personal use.
+- **Privacy** — Your Tesla credentials are never shared with anyone, not even the app developer. The sign-in happens directly between your phone and Tesla — nothing passes through any intermediary server.
+- **No costs** — Tesla charges per API call, but every account gets a $10/month credit. Personal use costs well under $1/month, so the credit covers it easily.
 - **Full control** — You can revoke access or delete your developer app anytime.
+
+A shared developer account would mean your sign-in tokens pass through someone else's server, and the per-call API costs from all users would fall on the developer. Your own account avoids both problems.
 
 ---
 
@@ -129,4 +131,4 @@ See the full **[FAQ page](https://tesla-lightphone.app/faq)** for answers about 
 
 ## Cost
 
-Tesla gives developers a free monthly API allowance that covers typical personal use. No payment method is required. If usage ever exceeds the allowance in a month, commands simply stop working until the next cycle.
+Tesla charges per API call (roughly $0.001 per command, $0.002 per data request, $0.02 per wake-up), but every developer account gets a **$10/month credit** applied automatically. Normal personal use costs well under $1/month, so the credit covers it easily. No payment method is required to get started.

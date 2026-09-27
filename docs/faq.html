@@ -124,13 +124,20 @@
                 <h3>Why do I need my own Tesla developer account?</h3>
                 <p>Three reasons:</p>
                 <p><strong>Privacy</strong> — Your Tesla credentials are never shared with anyone, not even the app developer. The connection is directly between your phone and Tesla's servers.</p>
-                <p><strong>Cost</strong> — Tesla gives every developer account a free monthly allowance of API calls. Your personal usage stays well within that limit, so there's nothing to pay. If the app used a single shared account, the developer would be charged for everyone's usage.</p>
+                <p><strong>Cost</strong> — Tesla gives every developer account a $10/month credit toward API usage. Your personal use costs well under $1/month, so the credit covers it easily. If the app used a single shared account, the per-call costs from all users would fall on the developer.</p>
                 <p><strong>Control</strong> — You can revoke access, change permissions, or delete your developer app anytime at <a href="https://developer.tesla.com" target="_blank">developer.tesla.com</a>.</p>
             </div>
 
             <div class="qa">
                 <h3>Is there a cost for a Tesla developer account?</h3>
-                <p>No. Tesla provides a free monthly API allowance that covers typical personal use — no payment method required. If usage exceeds the free tier in a given month, commands simply stop working until the next cycle. Normal personal use (locking, unlocking, checking status a few times a day) stays well within the limit.</p>
+                <p>Not for personal use. Tesla charges per API call (roughly $0.001 per command, $0.002 per data request, $0.02 per wake-up), but every developer account gets a <strong>$10/month credit</strong> applied automatically. Normal personal use — locking, unlocking, checking status a few times a day — costs well under $1/month, so the credit covers it easily. No payment method is required to get started.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Why not a single shared app for everyone?</h3>
+                <p>We considered it, but it would compromise both privacy and cost.</p>
+                <p><strong>Privacy:</strong> With a shared developer account, every user's sign-in would route through our server — your Tesla authorization code and tokens would temporarily touch infrastructure you don't control. With your own account, the token exchange happens directly between your phone and Tesla. Nothing passes through any intermediary.</p>
+                <p><strong>Cost:</strong> Tesla charges developers per API call. Every account gets a $10/month credit that easily covers one person's use. But with many users on a single account, those per-call costs add up quickly and would fall on the app developer. With your own account, your usage stays within your own $10 credit — no cost to you or anyone else.</p>
             </div>
 
             <div class="qa">

@@ -70,12 +70,12 @@ adb install -r tool/build/outputs/apk/debug/tool-debug.apk
 
 ## Cost
 
-Tesla gives developers a free monthly API allowance that covers typical personal use. No payment method required — if usage exceeds the allowance in a month, commands simply stop until the next cycle.
+Tesla charges per API call, but every developer account gets a **$10/month credit** applied automatically. Normal personal use costs well under $1/month, so the credit covers it easily. No payment method required to get started.
 
 ## FAQ
 
 **Why do I need my own developer account?**
-Privacy (your credentials stay yours), cost (Tesla's free tier covers personal use — no charges to anyone), and control (revoke access anytime at developer.tesla.com).
+Privacy (your credentials stay yours — sign-in goes directly to Tesla, never through a third-party server), cost (each account gets a $10/month credit that covers personal use), and control (revoke access anytime at developer.tesla.com).
 
 **Why does the developer app ask for a website URL?**
 Tesla requires every developer app to list an Allowed Origin and Redirect URI. These are part of the OAuth standard — the secure sign-in process used by Tesla, Google, Apple, and most major services. Think of them like a return address on an envelope: Tesla uses them to verify the sign-in request is legitimate. Your credentials never pass through that website — the connection is directly between your phone and Tesla.
@@ -84,6 +84,9 @@ Tesla requires every developer app to list an Allowed Origin and Redirect URI. T
 - **Vehicle Information** — Read your car's status: battery, temperature, location, tire pressure.
 - **Vehicle Commands** — Send commands: lock/unlock, climate, trunk/frunk, sentry mode, flash lights, remote start.
 - **Vehicle Charging Management** (optional) — Manage charging: start/stop, set limits, schedule.
+
+**Why not a single shared app instead of individual developer accounts?**
+Privacy and cost. A shared account would route every user's sign-in through the developer's server — your tokens would touch infrastructure you don't control. And Tesla charges per API call with a $10/month credit per account; with many users on one account, those costs add up and fall on the developer. Your own account keeps everything direct and free.
 
 **Is the QR code safe?**
 Yes. It's generated entirely by JavaScript in your browser — nothing is sent to any server. You can disconnect from the internet before entering your credentials and it still works. You can also generate the QR from your terminal, or skip it entirely with manual entry.
