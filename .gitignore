@@ -46,6 +46,7 @@ bin/
 ### Tesla VCP keys ###
 **/tesla_private_key.pem
 **/tesla_public_key.pem
+**/tesla_private_key_raw.pem
 
 ### Tesla proxy/dev files ###
 tool/tls_cert.pem
@@ -62,4 +63,3 @@ docs/tesla-auth/config.js
 ### Python (builder/) ###
 __pycache__/
 *.py[cod]
-.pytest_cache/**/tesla_private_key_raw.pem
