@@ -1,6 +1,6 @@
 [tool]
 id = "com.thelightphone.tool.tesla"
-label = "Tesla"
+label = "Tesla LP"
 versionCode = 1
 versionName = "0.1.0"
 permissions = ["android.permission.INTERNET", "android.permission.CAMERA"]
