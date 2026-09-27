@@ -15,7 +15,7 @@ Control your Tesla from your Light Phone 3. Lock, unlock, climate, trunk, sentry
 1. Create a Tesla developer app at [developer.tesla.com](https://developer.tesla.com)
 2. Get your credentials onto the Light Phone (QR code or manual entry)
 3. Sign in with your Tesla account directly on the phone
-4. Pair the app's encryption key with your vehicle (scan a QR code with your smartphone)
+4. Pair the encryption key with your vehicle (scan a QR code with your smartphone to approve)
 
 See the full **[Setup Guide](tool/SETUP_GUIDE.md)** for step-by-step instructions, or visit **[tesla-lightphone.app/setup](https://tesla-lightphone.app/setup)** for the interactive setup page.
 
