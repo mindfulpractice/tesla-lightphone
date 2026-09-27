@@ -62,4 +62,4 @@ docs/tesla-auth/config.js
 ### Python (builder/) ###
 __pycache__/
 *.py[cod]
-.pytest_cache/
+.pytest_cache/**/tesla_private_key_raw.pem
