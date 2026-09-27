@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -238,6 +239,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
     @Composable
     private fun SignInContent(state: SetupUiState) {
         val oauthUrl = state.oauthUrl ?: return
+        val webViewLoading = remember { mutableStateOf(true) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             LightTopBar(
@@ -250,13 +252,15 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
             )
 
             // Show "Loading..." while WebView is rendering (prevents black screen)
-            LightText(
-                text = "Loading Tesla sign-in...",
-                variant = LightTextVariant.Fine,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 1f.gridUnitsAsDp()),
-            )
+            if (webViewLoading.value) {
+                LightText(
+                    text = "Loading Tesla sign-in...",
+                    variant = LightTextVariant.Fine,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 1f.gridUnitsAsDp()),
+                )
+            }
 
             AndroidView(
                 factory = { context ->
@@ -282,6 +286,10 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                         cookieManager.setAcceptThirdPartyCookies(this, true)
 
                         webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                webViewLoading.value = false
+                            }
+
                             override fun shouldOverrideUrlLoading(
                                 view: WebView?,
                                 request: WebResourceRequest?,
