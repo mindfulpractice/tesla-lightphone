@@ -298,6 +298,11 @@ python -c "import qrcode; qrcode.make('{\"t\":\"cred\",\"i\":\"YOUR_CLIENT_ID\",
             </div>
 
             <div class="qa">
+                <h3>"Something went wrong connecting to Tesla"</h3>
+                <p>Try signing in again. If it keeps failing, verify your Allowed Origin and Redirect URI in your developer app match exactly: <code>https://tesla-lightphone.app</code> and <code>https://tesla-lightphone.app/setup</code>.</p>
+            </div>
+
+            <div class="qa">
                 <h3>Commands fail or give a 412 error</h3>
                 <p>This usually means the app's secure command channel (VCP) hasn't been set up yet. The app attempts this automatically during setup. Try disconnecting and reconnecting. If it persists, make sure your developer app is approved and your scopes include Vehicle Commands.</p>
             </div>
