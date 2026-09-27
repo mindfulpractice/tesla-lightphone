@@ -405,6 +405,12 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                         settings.displayZoomControls = false
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
+                        // Desktop user-agent so Tesla shows QR code
+                        // instead of trying to open the Tesla app
+                        settings.userAgentString =
+                            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+                            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                            "Chrome/120.0.0.0 Safari/537.36"
                         isFocusable = true
                         isFocusableInTouchMode = true
                         requestFocus()
@@ -414,6 +420,19 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 webViewLoading.value = false
+                            }
+
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                            ): Boolean {
+                                val url = request?.url?.toString() ?: return false
+                                // Block intent:// and market:// redirects
+                                if (url.startsWith("intent://") ||
+                                    url.startsWith("market://")) {
+                                    return true
+                                }
+                                return false
                             }
                         }
 
