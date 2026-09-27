@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ — Tesla for Light Phone</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #fafafa;
+            color: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .container { max-width: 560px; width: 100%; }
+        h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+        .subtitle a { color: #1a1a1a; }
+        .section {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .section h2 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #1a1a1a;
+        }
+        .qa { margin-bottom: 1.25rem; }
+        .qa:last-child { margin-bottom: 0; }
+        .qa h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            color: #1a1a1a;
+        }
+        .qa p {
+            font-size: 0.9rem;
+            color: #555;
+            line-height: 1.65;
+            margin-bottom: 0.5rem;
+        }
+        .qa p:last-child { margin-bottom: 0; }
+        .qa code {
+            background: #f5f5f5;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            color: #333;
+        }
+        .qa .code-block {
+            display: block;
+            background: #f5f5f5;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            word-break: break-all;
+            margin: 0.5rem 0;
+            color: #333;
+            font-family: monospace;
+        }
+        .scope-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .scope-table th {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 2px solid #e5e5e5;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 0.85rem;
+        }
+        .scope-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid #f0f0f0;
+            color: #555;
+            vertical-align: top;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .scope-table tr:last-child td { border-bottom: none; }
+        .scope-name { font-weight: 600; color: #1a1a1a; white-space: nowrap; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .privacy-note {
+            margin-top: 0.5rem;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #666;
+            line-height: 1.5;
+        }
+        .privacy-note a { color: #1a1a1a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/setup" class="back-link">&larr; Back to Setup</a>
+        <h1>Frequently Asked Questions</h1>
+        <p class="subtitle">Everything about setup, privacy, and how the app works.</p>
+
+        <!-- Developer Account -->
+        <div class="section">
+            <h2>Developer Account</h2>
+
+            <div class="qa">
+                <h3>Why do I need my own Tesla developer account?</h3>
+                <p>Three reasons:</p>
+                <p><strong>Privacy</strong> — Your Tesla credentials are never shared with anyone, not even the app developer. The connection is directly between your phone and Tesla's servers.</p>
+                <p><strong>Cost</strong> — Tesla gives every developer account a free monthly allowance of API calls. Your personal usage stays well within that limit, so there's nothing to pay. If the app used a single shared account, the developer would be charged for everyone's usage.</p>
+                <p><strong>Control</strong> — You can revoke access, change permissions, or delete your developer app anytime at <a href="https://developer.tesla.com" target="_blank">developer.tesla.com</a>.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Is there a cost for a Tesla developer account?</h3>
+                <p>No. Tesla provides a free monthly API allowance that covers typical personal use — no payment method required. If usage exceeds the free tier in a given month, commands simply stop working until the next cycle. Normal personal use (locking, unlocking, checking status a few times a day) stays well within the limit.</p>
+            </div>
+
+            <div class="qa">
+                <h3>How long does developer app approval take?</h3>
+                <p>Usually a few minutes, though it can occasionally take longer. You'll see the status on your <a href="https://developer.tesla.com" target="_blank">developer.tesla.com</a> dashboard.</p>
+            </div>
+        </div>
+
+        <!-- URLs & Redirect -->
+        <div class="section">
+            <h2>Allowed Origin & Redirect URI</h2>
+
+            <div class="qa">
+                <h3>Why do I have to enter a website URL in my developer app?</h3>
+                <p>Tesla requires every developer app to have an Allowed Origin and Allowed Redirect URI. These are part of the OAuth standard — the secure sign-in process used by Tesla, Google, Apple, and most major services.</p>
+                <p>Think of them like a return address on an envelope. When you sign in, Tesla checks that the request is coming from the website listed in your developer app. If it doesn't match, Tesla rejects the sign-in. This prevents someone from impersonating your app.</p>
+                <p><strong>Your credentials never pass through that website.</strong> The sign-in happens directly between your Light Phone and Tesla's servers. The website URL is only used by Tesla as a verification check.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Why is the URL tesla-lightphone.app instead of my own?</h3>
+                <p>The Allowed Origin and Redirect URI must match what the app sends to Tesla during sign-in. The app is built with <code>tesla-lightphone.app</code> as its redirect — so your developer app needs to list the same URL. If they don't match exactly, Tesla rejects the sign-in.</p>
+                <p>This doesn't give the website access to anything. The website is a static page with no backend — it can't receive, store, or process your credentials. The URL is purely a label that Tesla uses to verify the request.</p>
+            </div>
+
+            <div class="qa">
+                <h3>What exactly should I enter?</h3>
+                <p>When creating your developer app at developer.tesla.com, set:</p>
+                <p><strong>Allowed Origin:</strong></p>
+                <code class="code-block">https://tesla-lightphone.app</code>
+                <p><strong>Allowed Redirect URI:</strong></p>
+                <code class="code-block">https://tesla-lightphone.app/setup</code>
+                <p>These must match exactly — including <code>https://</code> and no trailing slash on the origin.</p>
+            </div>
+        </div>
+
+        <!-- API Scopes -->
+        <div class="section">
+            <h2>API Scopes (Permissions)</h2>
+
+            <div class="qa">
+                <h3>What are API scopes?</h3>
+                <p>Scopes are the permissions you grant the app when you sign in with Tesla. Each scope controls what the app can and cannot do. You choose which scopes to enable when creating your developer app — and you can change them later.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Which scopes does the app need?</h3>
+                <table class="scope-table">
+                    <thead>
+                        <tr>
+                            <th>Scope</th>
+                            <th>What It Does</th>
+                            <th>Required?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="scope-name">Vehicle Information</td>
+                            <td>Read your car's current state: battery level, charge status, interior/exterior temperature, location, tire pressure, odometer, and whether doors/windows are open. This is how the app shows your vehicle's status screen.</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td class="scope-name">Vehicle Commands</td>
+                            <td>Send commands to your car: lock/unlock doors, turn climate on/off, open trunk and frunk, toggle sentry mode, flash lights, honk horn, vent or close windows, and remote start. This is the core of what the app does.</td>
+                            <td>Yes</td>
+                        </tr>
+                        <tr>
+                            <td class="scope-name">Vehicle Charging Management</td>
+                            <td>Manage charging: start or stop a charging session, set the charge limit percentage, open or close the charge port, and schedule charging times.</td>
+                            <td>Optional</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>Vehicle Information and Vehicle Commands are needed for the app to function. Vehicle Charging Management is optional — you can add it later from your developer dashboard if you want charging controls.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Can I change scopes later?</h3>
+                <p>Yes. Go to <a href="https://developer.tesla.com" target="_blank">developer.tesla.com</a>, edit your application, and update the scope checkboxes. After changing scopes, you'll need to disconnect and reconnect in the app so the new permissions take effect.</p>
+            </div>
+
+            <div class="qa">
+                <h3>What about "openid" and "offline_access"?</h3>
+                <p>These are standard OAuth scopes that Tesla handles automatically — you don't select them on the developer dashboard. <code>openid</code> identifies your account during sign-in, and <code>offline_access</code> lets the app refresh its access token without asking you to sign in again every time. These don't grant any extra access to your vehicle.</p>
+            </div>
+        </div>
+
+        <!-- QR Code & Credentials -->
+        <div class="section">
+            <h2>QR Code & Credentials</h2>
+
+            <div class="qa">
+                <h3>How do I know the QR code is safe?</h3>
+                <p>The QR code is generated entirely by JavaScript running in your browser. No network requests are made with your credentials — they never leave your screen until your phone's camera reads the code.</p>
+                <p>You can verify this yourself:</p>
+                <p>1. Open the <a href="https://github.com/mindfulpractice/tesla-lightphone/blob/main/docs/setup.html" target="_blank">source code on GitHub</a> and search for the <code>generateQR()</code> function — it's all client-side.</p>
+                <p>2. Open your browser's Network tab (right-click → Inspect → Network) before entering credentials. You'll see zero outgoing requests when you generate the QR code.</p>
+                <p>3. Disconnect from the internet entirely before entering your credentials. The QR code still generates — proving nothing is sent anywhere.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Can I create the QR code without using the website?</h3>
+                <p>Yes. You can generate it from your computer's terminal, completely offline:</p>
+                <p><strong>Mac</strong> (install qrencode via Homebrew first):</p>
+                <code class="code-block">brew install qrencode
+qrencode -o tesla-qr.png '{"t":"cred","i":"YOUR_CLIENT_ID","s":"YOUR_CLIENT_SECRET"}'</code>
+                <p>This creates a <code>tesla-qr.png</code> file. Open it, scan with your Light Phone, then delete the file.</p>
+                <p><strong>Windows</strong> (using Python):</p>
+                <code class="code-block">pip install qrcode[pil]
+python -c "import qrcode; qrcode.make('{\"t\":\"cred\",\"i\":\"YOUR_CLIENT_ID\",\"s\":\"YOUR_CLIENT_SECRET\"}').save('tesla-qr.png')"</code>
+                <p>Or skip the QR entirely and type your credentials directly into the app using manual entry.</p>
+            </div>
+
+            <div class="qa">
+                <h3>What if I entered my credentials wrong?</h3>
+                <p>If you get an error after signing in, go to Settings in the app and tap Disconnect. Then re-enter your credentials (by QR or manually) and try again.</p>
+                <p>A common issue: uppercase <strong>I</strong> and lowercase <strong>l</strong> look identical on the Light Phone screen. If manual entry isn't working, double-check these characters in your Client Secret.</p>
+            </div>
+        </div>
+
+        <!-- Privacy & Security -->
+        <div class="section">
+            <h2>Privacy & Security</h2>
+
+            <div class="qa">
+                <h3>Where are my credentials stored?</h3>
+                <p>Your Client ID, Client Secret, and OAuth tokens are stored in the app's private data store on your Light Phone. This storage is sandboxed by Android — no other app can access it. Nothing is stored on any server.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Does the app connect to any server besides Tesla?</h3>
+                <p>No. The app communicates only with Tesla's servers (<code>auth.tesla.com</code> for sign-in and <code>fleet-api.prd.na.vn.cloud.tesla.com</code> for vehicle commands). There is no intermediary server, no analytics, no tracking, and no background network activity.</p>
+            </div>
+
+            <div class="qa">
+                <h3>What does the setup website know about me?</h3>
+                <p>Nothing. The setup page at <code>tesla-lightphone.app</code> is a static HTML file hosted on GitHub Pages. It has no backend, no database, no server-side code, and no analytics. Your credentials are processed entirely in your browser's memory and are gone when you close the tab.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Is this app open source?</h3>
+                <p>Yes. Every line of code — the app, the setup website, and this FAQ — is public at <a href="https://github.com/mindfulpractice/tesla-lightphone" target="_blank">github.com/mindfulpractice/tesla-lightphone</a>. You can read, audit, or build the app from source yourself.</p>
+            </div>
+
+            <div class="qa">
+                <h3>How do I revoke access?</h3>
+                <p>Two levels:</p>
+                <p><strong>In the app:</strong> Go to Settings → Disconnect. This clears all tokens and credentials from the app. You'll need to sign in again to use it.</p>
+                <p><strong>At Tesla:</strong> Go to <a href="https://developer.tesla.com" target="_blank">developer.tesla.com</a> and delete your developer application. This fully revokes all API access, and no app using those credentials can connect to your vehicle again.</p>
+            </div>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div class="section">
+            <h2>Troubleshooting</h2>
+
+            <div class="qa">
+                <h3>"Your Client Secret appears to be incorrect"</h3>
+                <p>Double-check the secret on developer.tesla.com. Watch for uppercase <strong>I</strong> vs lowercase <strong>l</strong> — they look identical on the Light Phone screen. If you used QR entry, try regenerating the code with the correct secret.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Sign-in page doesn't load</h3>
+                <p>Make sure your Light Phone has internet access (Wi-Fi or cellular data). The sign-in page is hosted by Tesla at <code>auth.tesla.com</code>, not by this app.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Commands fail or give a 412 error</h3>
+                <p>This usually means the app's secure command channel (VCP) hasn't been set up yet. The app attempts this automatically during setup. Try disconnecting and reconnecting. If it persists, make sure your developer app is approved and your scopes include Vehicle Commands.</p>
+            </div>
+
+            <div class="qa">
+                <h3>"Vehicle asleep — try again"</h3>
+                <p>This is normal. Teslas go to sleep to save battery. Send any command and the car wakes up automatically — it takes a few seconds. Try the command again after a moment.</p>
+            </div>
+
+            <div class="qa">
+                <h3>How do I update the app?</h3>
+                <p>Download the latest APK from the <a href="https://github.com/mindfulpractice/tesla-lightphone/releases" target="_blank">GitHub releases page</a> and install it on your Light Phone via ADB. Your credentials are preserved across updates — no need to sign in again.</p>
+            </div>
+        </div>
+
+        <div class="privacy-note">
+            <strong>Still have questions?</strong> Open an issue on <a href="https://github.com/mindfulpractice/tesla-lightphone/issues" target="_blank">GitHub</a> or check the <a href="/setup">setup guide</a>.
+        </div>
+    </div>
+</body>
+</html>

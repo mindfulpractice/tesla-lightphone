@@ -26,9 +26,9 @@ Setup takes about 5 minutes. No computer required (unless you want to use the QR
    - **Allowed Redirect URI**: `https://tesla-lightphone.app/setup`
 
 4. Under **API Scopes**, select:
-   - **Vehicle Information**
-   - **Vehicle Commands**
-   - Optionally: **Vehicle Charging Management** (for future charging controls)
+   - **Vehicle Information** — lets the app read your car's status (battery, temperature, location, tire pressure)
+   - **Vehicle Commands** — lets the app send commands (lock/unlock, climate, trunk, sentry mode, flash lights, remote start)
+   - Optionally: **Vehicle Charging Management** — lets the app manage charging (start/stop, set limits, schedule)
 
 5. Submit and wait for approval (usually a few minutes).
 
@@ -118,6 +118,12 @@ Normal. Send any command and the car wakes up automatically (takes a few seconds
 ## Disconnecting
 
 Go to Settings in the app and tap Disconnect. This clears all tokens and credentials from the app. Your Tesla developer app on developer.tesla.com remains — delete it there if you want to fully revoke access.
+
+---
+
+## More Questions
+
+See the full **[FAQ page](https://tesla-lightphone.app/faq)** for answers about privacy, API scopes, QR safety, and more.
 
 ---
 
