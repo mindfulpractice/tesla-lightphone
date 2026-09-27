@@ -84,7 +84,15 @@ After entering credentials (by QR or manual entry), the app opens Tesla's offici
 
 This happens between your phone and Tesla — the app never sees your password.
 
-After signing in, the app exchanges a one-time code for access tokens and finds your vehicle. You'll see a confirmation screen, and you're ready to go.
+## Step 4: Pair Key
+
+After signing in, the app shows a key pairing screen. This enrolls the app's encryption key on your vehicle so it can send secure commands (lock, unlock, climate, etc.).
+
+A QR code appears on screen — scan it with your smartphone's Tesla app to approve the pairing. Once confirmed on your smartphone, tap CONTINUE on the Light Phone.
+
+**Why is this needed?** Tesla requires all third-party apps to use end-to-end encrypted commands (Vehicle Command Protocol). The key pairing authorizes the app to send encrypted commands to your specific vehicle. No server is involved — the pairing happens directly between the app and Tesla.
+
+After pairing, you'll see a confirmation screen and you're ready to go.
 
 ---
 

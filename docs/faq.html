@@ -258,6 +258,32 @@ python -c "import qrcode; qrcode.make('{\"t\":\"cred\",\"i\":\"YOUR_CLIENT_ID\",
             </div>
         </div>
 
+
+        <!-- Key Pairing -->
+        <div class="section">
+            <h2>Key Pairing</h2>
+
+            <div class="qa">
+                <h3>What is key pairing?</h3>
+                <p>After signing in, the app asks to pair an encryption key with your vehicle. Tesla requires all third-party apps to use end-to-end encrypted commands (Vehicle Command Protocol). This step authorizes the app to send those encrypted commands to your specific vehicle.</p>
+            </div>
+
+            <div class="qa">
+                <h3>How does key pairing work?</h3>
+                <p>A QR code appears on the Light Phone screen. Scan it with your smartphone using the Tesla app. The Tesla app will ask to approve the key for your vehicle. Once confirmed on your smartphone, tap CONTINUE on the Light Phone.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Is key pairing private?</h3>
+                <p>Yes. No server is involved in this step. The pairing happens directly between the app and Tesla. The encryption key is stored only in the app on your phone — it never leaves the device.</p>
+            </div>
+
+            <div class="qa">
+                <h3>Do I need to pair again if I disconnect?</h3>
+                <p>If you disconnect and reconnect in the app, you will need to go through the full setup including key pairing again. The key enrollment on your vehicle persists, but the app needs to confirm it.</p>
+            </div>
+        </div>
+
         <!-- Privacy & Security -->
         <div class="section">
             <h2>Privacy & Security</h2>
