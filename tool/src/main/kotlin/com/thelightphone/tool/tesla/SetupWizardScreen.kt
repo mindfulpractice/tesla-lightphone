@@ -386,7 +386,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 text = if (webViewLoading.value)
                     "Loading..."
                 else
-                    "Scan QR with smartphone. Tap CONTINUE after pairing is confirmed.",
+                    "Scan QR with phone. Continue after confirmed.",
                 variant = LightTextVariant.Fine,
                 modifier = Modifier
                     .fillMaxWidth()
