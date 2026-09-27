@@ -96,3 +96,5 @@ For more questions, see the full **[FAQ page](https://tesla-lightphone.app/faq)*
 ## Credits
 
 Built on the [Light SDK](https://github.com/lightphone/light-sdk) by The Light Phone, Inc.
+
+Built with the help of [Claude](https://claude.ai) by Anthropic.
