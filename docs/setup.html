@@ -196,7 +196,7 @@
             <ul class="checklist">
                 <li>Allowed Origin: <code>https://tesla-lightphone.app</code></li>
                 <li>Allowed Redirect URI: <code>https://tesla-lightphone.app/setup</code></li>
-                <li>API Scopes: select <strong>Vehicle Information</strong> and <strong>Vehicle Commands</strong></li>
+                <li>API Scopes: select <strong>Vehicle Information</strong> and <strong>Vehicle Commands</strong> (optional: <strong>Vehicle Charging Management</strong> if you want charging controls later)</li>
             </ul>
             <p>The Origin and Redirect URI tell Tesla which app is allowed to connect. They must match exactly — Tesla uses them to verify the sign-in request is coming from this app.</p>
             <p>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong> from the app dashboard.</p>
@@ -247,6 +247,27 @@
             <h2>What happens after setup?</h2>
             <p>Once your credentials are on your phone (by QR or manual entry), the app opens Tesla's official sign-in page where you log in with your Tesla email and password. This happens directly between your phone and Tesla — the app never sees your password.</p>
             <p>After signing in, the app exchanges a one-time code for access tokens and finds your vehicle. You'll see a confirmation screen and you're ready to go.</p>
+        </div>
+
+        <!-- FAQ -->
+        <div class="what-happens" id="faq">
+            <h2>Frequently Asked Questions</h2>
+
+            <p><strong>Why do I have to enter a website URL in my developer app?</strong></p>
+            <p>Tesla requires every developer app to list an Allowed Origin and Redirect URI — but your credentials never pass through that website. Think of them like a return address on an envelope: Tesla uses them to verify the sign-in request is legitimate, not to send your data anywhere. The actual connection happens directly between your Light Phone and Tesla's servers. Our website is only a static setup page — it has no backend, no database, and no way to receive your credentials.</p>
+
+            <p><strong>How do I know the QR code is safe?</strong></p>
+            <p>The QR code is generated entirely by JavaScript running in your browser. You can verify this yourself: the code is open source at <a href="https://github.com/mindfulpractice/tesla-lightphone/blob/main/docs/setup.html" target="_blank">setup.html on GitHub</a> — search for the <code>generateQR()</code> function. No network requests are made with your credentials. You can even disconnect from the internet before entering them and the QR code still generates.</p>
+
+            <p><strong>Are there other ways to create the QR code?</strong></p>
+            <p>Yes. If you'd prefer not to use this page at all, you can generate the QR code from your computer's terminal:</p>
+            <p><strong>Mac</strong> (install qrencode via Homebrew first: <code>brew install qrencode</code>):</p>
+            <code>qrencode -o tesla-qr.png '{"t":"cred","i":"YOUR_CLIENT_ID","s":"YOUR_CLIENT_SECRET"}'</code>
+            <p>This creates a <code>tesla-qr.png</code> file on your computer. Scan it with your Light Phone, then delete the file. Nothing is sent anywhere — it's generated entirely offline.</p>
+            <p>Or skip the QR entirely and type your credentials directly into the app using the manual entry option.</p>
+
+            <p><strong>Why do I need my own developer account?</strong></p>
+            <p>Three reasons: <strong>Privacy</strong> — your Tesla credentials are never shared with anyone, not even the app developer. <strong>Cost</strong> — if the app used a shared developer account, the developer would be charged for everyone's API usage. With your own account, Tesla gives you a free monthly allowance of API calls that covers normal use. <strong>Control</strong> — you can revoke access, delete your developer app, or change permissions anytime at developer.tesla.com.</p>
         </div>
 
         <div class="privacy-note">

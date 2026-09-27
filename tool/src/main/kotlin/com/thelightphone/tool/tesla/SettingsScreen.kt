@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -20,10 +22,13 @@ import kotlinx.coroutines.launch
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.ui.LightBarButton
+import com.thelightphone.sdk.ui.LightBottomBar
 import com.thelightphone.sdk.ui.LightIcon
 import com.thelightphone.sdk.ui.LightIcons
 import com.thelightphone.sdk.ui.LightScrollView
+import androidx.compose.ui.text.style.TextAlign
 import com.thelightphone.sdk.ui.LightText
+import androidx.compose.ui.text.style.TextAlign
 import com.thelightphone.sdk.ui.LightTextVariant
 import com.thelightphone.sdk.ui.LightTheme
 import com.thelightphone.sdk.ui.LightThemeController
@@ -49,6 +54,7 @@ class SettingsScreen(sealedActivity: SealedLightActivity) :
         val themeColors by LightThemeController.colors.collectAsState()
         val state by viewModel.uiState.collectAsState()
         val scope = rememberCoroutineScope()
+        val showDisconnectConfirm = remember { mutableStateOf(false) }
 
         LightTheme(colors = themeColors) {
             Box(
@@ -64,12 +70,7 @@ class SettingsScreen(sealedActivity: SealedLightActivity) :
                         onControls = { viewModel.navigateTo(SettingsPage.Controls) },
                         onOrder = { viewModel.navigateTo(SettingsPage.Order) },
                         onToggleUnits = viewModel::toggleUnits,
-                        onDisconnect = {
-                            scope.launch {
-                                viewModel.disconnect()
-                                goBack(false)
-                            }
-                        },
+                        onDisconnect = { showDisconnectConfirm.value = true },
                         onBack = { goBack(true) },
                     )
 
@@ -85,6 +86,57 @@ class SettingsScreen(sealedActivity: SealedLightActivity) :
                         onMoveDown = viewModel::moveDown,
                         onBack = { viewModel.navigateTo(SettingsPage.Root) },
                     )
+                }
+
+                if (showDisconnectConfirm.value) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(LightThemeTokens.colors.background),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(horizontal = 1f.gridUnitsAsDp()),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            LightText(
+                                text = "Are you sure you want to disconnect? You will need to sign in again.",
+                                variant = LightTextVariant.Copy,
+                                align = TextAlign.Center,
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 1f.gridUnitsAsDp(), vertical = 1f.gridUnitsAsDp()),
+                        ) {
+                            LightText(
+                                text = "Cancel",
+                                variant = LightTextVariant.Copy,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .lightClickable(onClick = { showDisconnectConfirm.value = false })
+                                    .padding(vertical = 0.75f.gridUnitsAsDp()),
+                            )
+                            LightText(
+                                text = "Disconnect",
+                                variant = LightTextVariant.Copy,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .lightClickable(onClick = {
+                                        showDisconnectConfirm.value = false
+                                        scope.launch {
+                                            viewModel.disconnect()
+                                            goBack(false)
+                                        }
+                                    })
+                                    .padding(vertical = 0.75f.gridUnitsAsDp()),
+                            )
+                        }
+                    }
                 }
             }
         }

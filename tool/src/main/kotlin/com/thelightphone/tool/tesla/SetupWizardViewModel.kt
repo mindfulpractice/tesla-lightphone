@@ -298,7 +298,7 @@ class SetupWizardViewModel(
             "response_type" to "code",
             "client_id" to clientId,
             "redirect_uri" to CredentialStore.REDIRECT_URI,
-            "scope" to "openid offline_access vehicle_device_data vehicle_cmds",
+            "scope" to "openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds",
             "state" to UUID.randomUUID().toString(),
             "code_challenge" to codeChallenge,
             "code_challenge_method" to "S256",

@@ -1,198 +1,107 @@
-# Tesla Tool for Light Phone 3 — Setup Guide
+# Tesla for Light Phone 3 — Setup Guide
 
 Control your Tesla from your Light Phone 3. Lock, unlock, climate, trunk, and more — no smartphone needed.
 
-This guide covers everything from creating your Tesla developer account to scanning the QR code that connects your phone. You'll need a computer and about 20 minutes. After setup, the app works independently.
+Setup takes about 5 minutes. No computer required (unless you want to use the QR code option).
 
 ---
 
 ## What You'll Need
 
-- A Light Phone 3 with USB debugging enabled ([modding guide](https://www.reddit.com/r/ModifiedLightPhones/comments/1v1wvwr/updated_light_phone_iii_modding_guide/)) and USB cable
-- A computer (Mac, Windows, or Linux)
+- A Light Phone 3 with the Tesla app installed
 - A Tesla account (the one linked to your car)
-- A GitHub account (free — github.com)
-- JDK 17 installed (for building the app)
-- Android SDK / platform-tools installed (for `adb`)
 
 ---
 
-## Step 1: Create a Tesla Developer Account
+## Step 1: Create a Tesla Developer App
 
-1. Go to **developer.tesla.com** and sign in with your Tesla account.
+1. Go to **[developer.tesla.com](https://developer.tesla.com)** and sign in with your Tesla account.
 
 2. Click **Create Application** and fill in:
    - **Name**: anything (e.g., "LP3 Tesla")
-   - **Description**: "Light Phone 3 Tesla control"
-   - **Purpose**: "Personal vehicle control"
-   - **Allowed Origin**: `https://YOUR-GITHUB-USERNAME.github.io`
-   - **Allowed Redirect**: `https://YOUR-GITHUB-USERNAME.github.io/tesla-lightphone/tesla-auth/`
+   - **Description**: anything (for your reference)
 
-3. Save your **Client ID** and **Client Secret** somewhere safe. You'll need both shortly. Never share the Client Secret publicly.
+3. Set these fields exactly:
+   - **Allowed Origin**: `https://tesla-lightphone.app`
+   - **Allowed Redirect URI**: `https://tesla-lightphone.app/setup`
 
-4. **Billing is optional.** Tesla gives a $10/month discount that covers typical personal use. If you don't add a payment method, commands will simply stop working if you ever exceed $10 in a month (unlikely with normal use). You can optionally add a payment method and set a billing limit in the developer dashboard.
+4. Under **API Scopes**, select:
+   - **Vehicle Information**
+   - **Vehicle Commands**
+   - Optionally: **Vehicle Charging Management** (for future charging controls)
 
----
+5. Submit and wait for approval (usually a few minutes).
 
-## Step 2: Set Up GitHub Pages
+6. Once approved, copy your **Client ID** and **Client Secret** from the dashboard.
 
-Your app needs a small website to host two things: a public key (required by Tesla) and an auth page (generates the QR code you'll scan).
+### Why these URLs?
 
-1. **Fork this repository** on GitHub (or clone and push to your own repo).
+Tesla requires every developer app to list a website, but your credentials never pass through it. The URLs are like a return address on an envelope — Tesla uses them to verify the sign-in request is coming from the right app. The actual connection happens directly between your Light Phone and Tesla's servers.
 
-2. In your fork's **Settings → Pages**, enable GitHub Pages:
-   - Source: "Deploy from a branch"
-   - Branch: `main`, folder: `/docs`
-   - Save
+### Why your own developer account?
 
-3. Create the auth page config:
-   - Go to `docs/tesla-auth/config.js.example` in your fork
-   - Copy it to `docs/tesla-auth/config.js`
-   - Replace `your-client-id-here` with your actual Client ID from Step 1
-
-4. Create the public key placeholder:
-   - In the `docs/` folder, create the path: `.well-known/appspecific/com.tesla.3p.public-key.pem`
-   - Leave the file empty for now — you'll fill it in after the first app launch
-
-5. Push your changes and wait a minute for GitHub Pages to deploy. Verify by visiting:
-   `https://YOUR-GITHUB-USERNAME.github.io/tesla-lightphone/tesla-auth/`
-   You should see the "Tesla Connect" auth page.
+- **Privacy** — Your Tesla credentials are never shared with anyone, not even the app developer.
+- **No costs** — Tesla gives every developer account a free monthly API allowance that covers normal personal use.
+- **Full control** — You can revoke access or delete your developer app anytime.
 
 ---
 
-## Step 3: Configure and Build the App
+## Step 2: Get Credentials to Your Phone
 
-1. Open `local.properties` in the project root (this file is gitignored — your secrets stay local):
+You have two options:
 
-   ```
-   TESLA_CLIENT_ID=your-client-id-from-step-1
-   TESLA_CLIENT_SECRET=your-client-secret-from-step-1
-   TESLA_REDIRECT_URI=https://YOUR-GITHUB-USERNAME.github.io/tesla-lightphone/tesla-auth/
-   ```
+### Option A: QR Code (needs a computer)
 
-2. Connect your Light Phone 3 via USB (USB debugging should already be enabled from the prerequisites).
+1. Go to **[tesla-lightphone.app/setup](https://tesla-lightphone.app/setup)** on your computer.
+2. Enter your Client ID and Client Secret.
+3. Click **Generate QR Code**.
+4. On your Light Phone, open the Tesla app and tap **SCAN QR**.
+5. Point the camera at the QR code on your screen.
 
-3. Build and install:
+The QR code is generated entirely in your browser — nothing is sent to any server. You can verify this in the [source code](https://github.com/mindfulpractice/tesla-lightphone/blob/main/docs/setup.html).
 
-   ```bash
-   export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # Mac only
-   cd path/to/light-sdk
-   ./gradlew :tool:installDebug
-   ```
+**Alternative QR methods:** You can also generate the QR from your terminal:
+```bash
+# Mac (install first: brew install qrencode)
+qrencode -o tesla-qr.png '{"t":"cred","i":"YOUR_CLIENT_ID","s":"YOUR_CLIENT_SECRET"}'
+```
+Scan the resulting image, then delete it.
 
-   The Tesla tool should appear on your Light Phone.
+### Option B: Manual Entry (no computer needed)
 
----
+1. On your Light Phone, open the Tesla app and tap **ENTER MANUALLY**.
+2. Type your Client ID and Client Secret directly.
 
-## Step 4: Get Your Public Key onto GitHub
-
-The app generates a unique key pair on first launch. Tesla requires the public half hosted on your website.
-
-1. Open the Tesla tool on your Light Phone once (it will show the setup screen — that's fine, just let it generate the keys).
-
-2. Retrieve the public key from the phone:
-
-   ```bash
-   adb shell run-as com.thelightphone.tool.tesla cat files/tesla_public_key.pem
-   ```
-
-   If you have multiple devices connected, target the LP3:
-   ```bash
-   adb -s YOUR_DEVICE_SERIAL shell run-as com.thelightphone.tool.tesla cat files/tesla_public_key.pem
-   ```
-
-3. Copy the entire output (from `-----BEGIN PUBLIC KEY-----` to `-----END PUBLIC KEY-----`).
-
-4. In your GitHub repo, edit `docs/.well-known/appspecific/com.tesla.3p.public-key.pem` and paste the public key. Commit and push.
-
-5. Wait a minute, then verify by visiting:
-   `https://YOUR-GITHUB-USERNAME.github.io/tesla-lightphone/.well-known/appspecific/com.tesla.3p.public-key.pem`
-   It should show your public key.
+**Note:** Some characters like uppercase I and lowercase l look the same on the Light Phone screen. Double-check these if you get an error.
 
 ---
 
-## Step 5: Register with Tesla
+## Step 3: Sign In
 
-These one-time terminal commands register your app with Tesla's servers.
+After entering credentials (by QR or manual entry), the app opens Tesla's official sign-in page directly on your Light Phone. Log in with your Tesla email and password.
 
-1. **Get a partner token:**
+This happens between your phone and Tesla — the app never sees your password.
 
-   ```bash
-   curl --request POST \
-     --header 'Content-Type: application/x-www-form-urlencoded' \
-     --data-urlencode 'grant_type=client_credentials' \
-     --data-urlencode 'client_id=YOUR_CLIENT_ID' \
-     --data-urlencode 'client_secret=YOUR_CLIENT_SECRET' \
-     --data-urlencode 'scope=openid vehicle_device_data vehicle_cmds' \
-     --data-urlencode 'audience=https://fleet-api.prd.na.vn.cloud.tesla.com' \
-     'https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token'
-   ```
-
-   Copy the `access_token` from the response.
-
-2. **Register your domain:**
-
-   ```bash
-   curl --request POST \
-     --header 'Authorization: Bearer YOUR_PARTNER_TOKEN' \
-     --header 'Content-Type: application/json' \
-     --data '{"domain":"YOUR-GITHUB-USERNAME.github.io"}' \
-     'https://fleet-api.prd.na.vn.cloud.tesla.com/api/1/partner_accounts'
-   ```
-
-   You should see a success response with your public key echoed back.
-
----
-
-## Step 6: Pair Your Car's Virtual Key
-
-This lets the app send commands to your car. You only do this once per vehicle.
-
-1. Open this URL in a browser (phone or computer):
-   `https://tesla.com/_ak/YOUR-GITHUB-USERNAME.github.io`
-
-2. Sign in with your Tesla account if prompted.
-
-3. The Tesla app on your smartphone will ask you to approve a virtual key. **Tap your Tesla key card on your phone** to confirm.
-
----
-
-## Step 7: Connect the App
-
-1. On your computer, go to your auth page:
-   `https://YOUR-GITHUB-USERNAME.github.io/tesla-lightphone/tesla-auth/`
-
-2. Click **Sign in with Tesla** and log in with your Tesla account.
-
-3. After signing in, you'll see a QR code.
-
-4. On your Light Phone, open the Tesla tool and tap **SCAN QR CODE**.
-
-5. Scan the QR code. The app will connect to your Tesla account.
-
-6. You should see your vehicle's controls. Done!
+After signing in, the app exchanges a one-time code for access tokens and finds your vehicle. You'll see a confirmation screen, and you're ready to go.
 
 ---
 
 ## Troubleshooting
 
-**Build fails with JdkImageTransform error**
-Make sure you're using JDK 17: `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`
+**"Your Client Secret appears to be incorrect"**
+Double-check the secret on developer.tesla.com. Watch for uppercase I vs lowercase l — they look identical on the Light Phone screen.
 
-**"adb: command not found"**
-Use the full path: `~/Library/Android/sdk/platform-tools/adb`
+**Sign-in page doesn't load**
+Make sure your Light Phone has internet access. The sign-in page is hosted by Tesla, not this app.
+
+**"Something went wrong connecting to Tesla"**
+Try signing in again. If it keeps failing, verify your Allowed Origin and Redirect URI in your Tesla developer app match exactly: `https://tesla-lightphone.app` and `https://tesla-lightphone.app/setup`.
 
 **Commands fail with 412 error**
-Your partner registration (Step 5) didn't complete. Re-run those curl commands.
+The app automatically attempts partner registration during setup. If it fails, commands requiring VCP (like lock/unlock) won't work until registration succeeds. Try disconnecting and reconnecting.
 
 **"Vehicle asleep — try again"**
 Normal. Send any command and the car wakes up automatically (takes a few seconds).
-
-**Camera permission error on QR scan**
-Go back and try again. If it persists, restart the Light Phone.
-
-**"Session expired"**
-Go to your auth page, sign in again, scan a new QR code. Your virtual key is still paired — you just need a fresh auth token.
 
 ---
 
@@ -200,12 +109,18 @@ Go to your auth page, sign in again, scan a new QR code. Your virtual key is sti
 
 - **All credentials stay on your device.** The app only talks to Tesla's servers.
 - **No analytics, no tracking, no background activity.**
-- **Your Client Secret is compiled into the app** on your phone — never push it to GitHub. The `local.properties` file is gitignored by default.
-- **Your GitHub repo only contains your public key**, which is safe to share by design (it's the "public" half of a key pair).
 - **Auth tokens are stored in the app's private storage** on the Light Phone, inaccessible to other apps.
+- **The setup website is static HTML + JavaScript** — no backend, no database, no server-side code. [Source code](https://github.com/mindfulpractice/tesla-lightphone).
+- **Open source** — you can read every line.
+
+---
+
+## Disconnecting
+
+Go to Settings in the app and tap Disconnect. This clears all tokens and credentials from the app. Your Tesla developer app on developer.tesla.com remains — delete it there if you want to fully revoke access.
 
 ---
 
 ## Cost
 
-Tesla gives developers a $10/month discount that covers typical personal use. You don't need to add a payment method — if usage ever exceeds $10 in a month, commands simply stop working until the next billing cycle. You can optionally add a payment method and set a billing limit in the developer dashboard.
+Tesla gives developers a free monthly API allowance that covers typical personal use. No payment method is required. If usage ever exceeds the allowance in a month, commands simply stop working until the next cycle.
