@@ -382,15 +382,16 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
             )
 
-            if (webViewLoading.value) {
-                LightText(
-                    text = "Loading key pairing...",
-                    variant = LightTextVariant.Fine,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 1f.gridUnitsAsDp()),
-                )
-            }
+            LightText(
+                text = if (webViewLoading.value)
+                    "Loading..."
+                else
+                    "Scan QR with smartphone. Tap CONTINUE after pairing is confirmed.",
+                variant = LightTextVariant.Fine,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 1f.gridUnitsAsDp()),
+            )
 
             AndroidView(
                 factory = { context ->
