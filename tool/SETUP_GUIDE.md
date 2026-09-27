@@ -44,7 +44,7 @@ Tesla requires every developer app to list a website, but your credentials never
 - **No costs** — Tesla charges per API call, but every account gets a $10/month credit. Personal use costs well under $1/month, so the credit covers it easily.
 - **Full control** — You can revoke access or delete your developer app anytime.
 
-A shared developer account would mean your sign-in tokens pass through someone else's server, and the per-call API costs from all users would fall on the developer. Your own account avoids both problems.
+A shared developer account would require running a server to handle sign-ins — meaning tokens would pass through infrastructure outside your control — and the per-call API costs from all users would fall on a single account. Your own account avoids both problems.
 
 ---
 

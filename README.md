@@ -86,7 +86,7 @@ Tesla requires every developer app to list an Allowed Origin and Redirect URI. T
 - **Vehicle Charging Management** (optional) — Manage charging: start/stop, set limits, schedule.
 
 **Why not a single shared app instead of individual developer accounts?**
-Privacy and cost. A shared account would route every user's sign-in through the developer's server — your tokens would touch infrastructure you don't control. And Tesla charges per API call with a $10/month credit per account; with many users on one account, those costs add up and fall on the developer. Your own account keeps everything direct and free.
+Privacy and cost. A shared account would require a server to handle sign-ins — meaning tokens would pass through infrastructure outside your control. And Tesla charges per API call with a $10/month credit per account; with many users on one account, those costs add up and fall on the developer. Your own account keeps everything direct and free.
 
 **Is the QR code safe?**
 Yes. It's generated entirely by JavaScript in your browser — nothing is sent to any server. You can disconnect from the internet before entering your credentials and it still works. You can also generate the QR from your terminal, or skip it entirely with manual entry.
