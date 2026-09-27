@@ -16,12 +16,19 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.UUID
 
-/** Setup wizard steps: scan credentials QR, then sign in via WebView. */
+/** Setup wizard steps. */
 enum class SetupStep {
     Welcome,
+    ManualEntry,
     SignIn,
     Processing,
     Done,
+}
+
+/** Which field is currently being edited in ManualEntry. */
+enum class EditingField {
+    ClientId,
+    ClientSecret,
 }
 
 data class SetupUiState(
@@ -33,6 +40,11 @@ data class SetupUiState(
     val setupComplete: Boolean = false,
     /** Tesla OAuth URL for the WebView to load. */
     val oauthUrl: String? = null,
+    /** Manual entry field values. */
+    val manualClientId: String = "",
+    val manualClientSecret: String = "",
+    /** Which field the keyboard editor is open for (null = show form). */
+    val editingField: EditingField? = null,
 )
 
 class SetupWizardViewModel(
@@ -47,6 +59,9 @@ class SetupWizardViewModel(
     /** PKCE code verifier — generated fresh each sign-in attempt. */
     private var codeVerifier: String? = null
 
+    /** Session key for resetting the text field state. */
+    private var editorSession = 0
+
     // ── Navigation ──────────────────────────────────────
 
     fun goToStep(step: SetupStep) {
@@ -56,6 +71,7 @@ class SetupWizardViewModel(
                 errorModal = null,
                 statusMessages = emptyList(),
                 oauthUrl = null,
+                editingField = null,
             )
         }
     }
@@ -116,7 +132,6 @@ class SetupWizardViewModel(
         credentialStore.saveClientSecret(secret)
         Log.i("SetupWizard", "Credentials saved from QR")
 
-        // Generate PKCE and build OAuth URL
         startOAuthFlow(id)
     }
 
@@ -141,20 +156,70 @@ class SetupWizardViewModel(
         }
     }
 
+    // ── Manual entry ────────────────────────────────────
+
+    fun startEditing(field: EditingField) {
+        editorSession++
+        _uiState.update { it.copy(editingField = field) }
+    }
+
+    fun cancelEditing() {
+        _uiState.update { it.copy(editingField = null) }
+    }
+
+    fun submitFieldValue(field: EditingField, value: String) {
+        when (field) {
+            EditingField.ClientId -> _uiState.update {
+                it.copy(manualClientId = value, editingField = null)
+            }
+            EditingField.ClientSecret -> _uiState.update {
+                it.copy(manualClientSecret = value, editingField = null)
+            }
+        }
+    }
+
+    fun getEditorSession(): Int = editorSession
+
+    /** Submit manually entered credentials and start OAuth. */
+    fun submitManualCredentials() {
+        val id = _uiState.value.manualClientId.trim()
+        val secret = _uiState.value.manualClientSecret.trim()
+
+        if (id.isBlank() || secret.isBlank()) {
+            _uiState.update {
+                it.copy(errorModal = "Both Client ID and Client Secret are required.")
+            }
+            return
+        }
+
+        Log.i("SetupWizard", "Client ID length=${id.length}, first4=${id.take(4)}, last4=${id.takeLast(4)}")
+        Log.i("SetupWizard", "Client Secret length=${secret.length}")
+
+        credentialStore.saveClientId(id)
+        credentialStore.saveClientSecret(secret)
+        Log.i("SetupWizard", "Credentials saved from manual entry")
+
+        startOAuthFlow(id)
+    }
+
     // ── OAuth via WebView ───────────────────────────────
 
     /** Generate PKCE parameters and build the Tesla OAuth URL. */
     private fun startOAuthFlow(clientId: String) {
         val verifier = generateCodeVerifier()
         codeVerifier = verifier
+        Log.i("SetupWizard", "PKCE verifier generated: first4=${verifier.take(4)} last4=${verifier.takeLast(4)} len=${verifier.length}")
         val challenge = generateCodeChallenge(verifier)
         val url = buildOAuthUrl(clientId, challenge)
+
+        Log.i("SetupWizard", "OAuth URL: $url")
 
         _uiState.update {
             it.copy(
                 showQrScanner = false,
                 step = SetupStep.SignIn,
                 oauthUrl = url,
+                editingField = null,
             )
         }
     }
@@ -162,12 +227,13 @@ class SetupWizardViewModel(
     /** Called when the WebView intercepts the redirect with an auth code. */
     fun onOAuthCodeReceived(code: String) {
         val verifier = codeVerifier
+        Log.i("SetupWizard", "onOAuthCodeReceived: code first8=${code.take(8)} verifier=${if (verifier != null) "first4=${verifier.take(4)} last4=${verifier.takeLast(4)}" else "NULL"}")
         if (verifier == null) {
             _uiState.update {
                 it.copy(
                     step = SetupStep.Welcome,
                     oauthUrl = null,
-                    errorModal = "Sign-in session expired. Please scan the QR code again.",
+                    errorModal = "Sign-in session expired. Please try again.",
                 )
             }
             return
@@ -194,19 +260,19 @@ class SetupWizardViewModel(
         Log.e("SetupWizard", "OAuth error: $error")
         _uiState.update {
             it.copy(
-                step = SetupStep.Welcome,
+                step = SetupStep.ManualEntry,
                 oauthUrl = null,
-                errorModal = "Tesla sign-in failed: $error\n\nPlease try again.",
+                errorModal = "Tesla sign-in failed: $error\n\nCheck your credentials and try again.",
             )
         }
     }
 
-    /** Cancel sign-in and return to Welcome. */
+    /** Cancel sign-in and return to ManualEntry so user can edit and retry. */
     fun cancelSignIn() {
         codeVerifier = null
         _uiState.update {
             it.copy(
-                step = SetupStep.Welcome,
+                step = SetupStep.ManualEntry,
                 oauthUrl = null,
             )
         }
@@ -250,10 +316,6 @@ class SetupWizardViewModel(
 
     // ── Token exchange ──────────────────────────────────
 
-    /**
-     * Exchanges the OAuth auth code for tokens, fetches vehicles,
-     * and completes setup.
-     */
     private fun exchangeAndFinish(authCode: String, codeVerifier: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val tokenResult = api.exchangeAuthCode(authCode, codeVerifier)
@@ -261,11 +323,16 @@ class SetupWizardViewModel(
             if (tokenResult.isFailure) {
                 val error = tokenResult.exceptionOrNull()?.message ?: "Unknown error"
                 Log.e("SetupWizard", "Token exchange failed: $error")
+                val userMessage = if (error.contains("unauthorized_client", ignoreCase = true)) {
+                    "Your Client Secret appears to be incorrect. Please double-check it on developer.tesla.com. Note: the letters I (uppercase i) and l (lowercase L) can look the same on this screen."
+                } else {
+                    "Something went wrong connecting to Tesla. Please try again."
+                }
                 withContext(Dispatchers.Main) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorModal = "Sign-in failed: $error\n\nPlease scan the QR code and try again.",
+                            errorModal = userMessage,
                         )
                     }
                 }
@@ -315,7 +382,6 @@ class SetupWizardViewModel(
                 },
                 onFailure = { error ->
                     Log.w("SetupWizard", "Vehicle fetch failed: ${error.message}")
-                    // Still complete setup — user can retry vehicle fetch later
                     credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
                         _uiState.update {

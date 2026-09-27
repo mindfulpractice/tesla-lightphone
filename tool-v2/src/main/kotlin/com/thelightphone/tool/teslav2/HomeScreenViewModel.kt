@@ -36,7 +36,6 @@ class HomeScreenViewModel(
 
     private fun checkAuth() {
         authJob?.cancel()
-        val freshTokens = skipNextRefresh
         skipNextRefresh = false
 
         authJob = viewModelScope.launch(Dispatchers.IO) {
@@ -47,55 +46,10 @@ class HomeScreenViewModel(
                 return@launch
             }
 
-            // Skip refresh when tokens were just obtained in the setup wizard
-            if (!freshTokens) {
-                // Refresh access token on startup — retry once before giving up
-                var refreshResult = api.refreshAccessToken()
-                if (refreshResult.isFailure) {
-                    kotlinx.coroutines.delay(2000)
-                    refreshResult = api.refreshAccessToken()
-                }
-                if (refreshResult.isFailure) {
-                    val error = refreshResult.exceptionOrNull()
-                    val isAuthError = error?.message?.contains("401") == true ||
-                        error?.message?.contains("invalid_grant") == true ||
-                        error?.message?.contains("Auth failed") == true
-                    if (isAuthError) {
-                        // Genuine auth rejection — tokens are invalid, must re-authenticate
-                        tokenStore.clear()
-                        withContext(Dispatchers.Main) {
-                            _uiState.value = TeslaUiState(
-                                mode = TeslaScreenMode.NeedsSetup,
-                                errorModal = "Session expired. Run setup again to reconnect.",
-                            )
-                        }
-                    } else {
-                        // Network error — keep tokens, show controls with an error
-                        val vin = tokenStore.getSelectedVin()
-                        val name = tokenStore.getVehicleName() ?: ""
-                        if (vin != null) {
-                            val controls = tokenStore.getControls()
-                            val units = tokenStore.getUnits()
-                            withContext(Dispatchers.Main) {
-                                _uiState.value = TeslaUiState(
-                                    mode = TeslaScreenMode.Controls(vehicleName = name),
-                                    controlSettings = controls,
-                                    units = units,
-                                    errorModal = "No internet — check your connection.",
-                                )
-                            }
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                _uiState.value = TeslaUiState(
-                                    mode = TeslaScreenMode.NeedsSetup,
-                                    errorModal = "No internet — check your connection.",
-                                )
-                            }
-                        }
-                    }
-                    return@launch
-                }
-            }
+            // No eager refresh on startup — the API calls handle 401s
+            // by refreshing the token and retrying automatically.
+            // This avoids the "session expired" false alarm when the
+            // refresh endpoint is temporarily unreachable.
 
             // Fetch vehicles if we don't have one selected yet
             if (tokenStore.getSelectedVin() == null) {
@@ -168,6 +122,23 @@ class HomeScreenViewModel(
         }
     }
 
+    /** Check if an error is an auth/token error that requires re-setup. */
+    private fun isAuthError(error: Throwable?): Boolean {
+        val msg = error?.message ?: return false
+        return msg.contains("401") || msg.contains("invalid_grant") ||
+            msg.contains("Auth failed") || msg.contains("No refresh token")
+    }
+
+    private suspend fun handleAuthError() {
+        tokenStore.clear()
+        withContext(Dispatchers.Main) {
+            _uiState.value = TeslaUiState(
+                mode = TeslaScreenMode.NeedsSetup,
+                errorModal = "Session expired. Run setup again to reconnect.",
+            )
+        }
+    }
+
     // ── Vehicle state ────────────────────────────────────
 
     fun fetchVehicleState() {
@@ -210,11 +181,15 @@ class HomeScreenViewModel(
                         }
                     },
                     onFailure = { error ->
-                        _uiState.update {
-                            it.copy(
-                                isRefreshing = false,
-                                errorModal = "Refresh failed: ${error.message?.take(100)}",
-                            )
+                        if (isAuthError(error)) {
+                            handleAuthError()
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    errorModal = "Refresh failed: ${error.message?.take(100)}",
+                                )
+                            }
                         }
                     },
                 )
@@ -305,12 +280,16 @@ class HomeScreenViewModel(
                         }
                     },
                     onFailure = { error ->
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                activeCommand = null,
-                                errorModal = error.message ?: "Command failed",
-                            )
+                        if (isAuthError(error)) {
+                            handleAuthError()
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    activeCommand = null,
+                                    errorModal = error.message ?: "Command failed",
+                                )
+                            }
                         }
                     },
                 )

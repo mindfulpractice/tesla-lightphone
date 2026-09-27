@@ -1,7 +1,6 @@
 package com.thelightphone.tool.teslav2
 
 import android.annotation.SuppressLint
-import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -14,10 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.thelightphone.sdk.LightScreen
@@ -25,16 +27,20 @@ import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightBottomBar
 import com.thelightphone.sdk.ui.LightFullscreenModal
+import com.thelightphone.sdk.ui.LightIcons
 import com.thelightphone.sdk.LightQrCodeScanner
-import com.thelightphone.sdk.ui.LightScrollView
 import com.thelightphone.sdk.ui.LightText
+import com.thelightphone.sdk.ui.LightTextField
+import com.thelightphone.sdk.ui.LightTextInputEditor
 import com.thelightphone.sdk.ui.LightTextVariant
 import com.thelightphone.sdk.ui.LightTheme
 import com.thelightphone.sdk.ui.LightThemeController
 import com.thelightphone.sdk.ui.LightThemeTokens
 import com.thelightphone.sdk.ui.LightTopBar
 import com.thelightphone.sdk.ui.LightTopBarCenter
+import com.thelightphone.sdk.ui.defaultKeyboardOptions
 import com.thelightphone.sdk.ui.gridUnitsAsDp
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class SetupWizardScreen(sealedActivity: SealedLightActivity) :
     LightScreen<Boolean, SetupWizardViewModel>(sealedActivity) {
@@ -54,7 +60,8 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
         val themeColors by LightThemeController.colors.collectAsState()
         val state by viewModel.uiState.collectAsState()
 
-        // When setup is complete, return true to HomeScreen
+        val keyboardOptionsFlow = remember { MutableStateFlow(defaultKeyboardOptions()) }
+
         LaunchedEffect(state.setupComplete) {
             if (state.setupComplete) {
                 goBack(true)
@@ -67,17 +74,51 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                     .fillMaxSize()
                     .background(LightThemeTokens.colors.background),
             ) {
-                // Show QR scanner full-screen when active
                 if (state.showQrScanner) {
                     LightQrCodeScanner(
-                        title = "Scan Credentials QR",
+                        title = "Scan QR Code",
                         onScanned = { viewModel.onQrScanned(it) },
                         onBack = { viewModel.hideQrScanner() },
                         modifier = Modifier.background(LightThemeTokens.colors.background),
                     )
+                } else if (state.editingField != null) {
+                    // Editor at top level of Content (same pattern as Weather app).
+                    // key() on editorSession forces a fresh TextFieldState per edit,
+                    // so the Client ID text doesn't carry over into Client Secret.
+                    val editingField = state.editingField!!
+                    val title = when (editingField) {
+                        EditingField.ClientId -> "Client ID"
+                        EditingField.ClientSecret -> "Client Secret"
+                    }
+                    val initialValue = when (editingField) {
+                        EditingField.ClientId -> state.manualClientId
+                        EditingField.ClientSecret -> state.manualClientSecret
+                    }
+                    val editorSession = viewModel.getEditorSession()
+
+                    key(editorSession) {
+                        val textFieldState = rememberTextFieldState(initialValue)
+
+                        LightTextInputEditor(
+                            title = title,
+                            state = textFieldState,
+                            editorKey = editorSession,
+                            keyboardOptionsFlow = keyboardOptionsFlow,
+                            onSubmit = { result ->
+                                viewModel.submitFieldValue(editingField, result.toString())
+                            },
+                            onBack = { viewModel.cancelEditing() },
+                            submitLabel = "DONE",
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(LightThemeTokens.colors.background),
+                        )
+                    }
                 } else {
                     when (state.step) {
                         SetupStep.Welcome -> WelcomeContent()
+                        SetupStep.ManualEntry -> ManualEntryContent(state)
                         SetupStep.SignIn -> SignInContent(state)
                         SetupStep.Processing -> ProcessingContent(state)
                         SetupStep.Done -> DoneContent()
@@ -94,54 +135,87 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
         }
     }
 
-    // ── Welcome: instructions + Scan QR ─────────────────
+    // ── Welcome ─────────────────────────────────────────
 
     @Composable
     private fun WelcomeContent() {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 1f.gridUnitsAsDp()),
-        ) {
-            LightTopBar(center = LightTopBarCenter.Text("Setup"))
+        Column(modifier = Modifier.fillMaxSize()) {
+            LightTopBar(
+                leftButton = LightBarButton.LightIcon(
+                    icon = LightIcons.BACK,
+                    onClick = { goBack(false) },
+                ),
+                center = LightTopBarCenter.Text("Setup"),
+                modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+            )
 
-            LightScrollView(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 1f.gridUnitsAsDp()),
+            ) {
                 Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
+                LightText(
+                    text = "Visit tesla-lightphone.app/setup for instructions and to get your credentials.",
+                    variant = LightTextVariant.Copy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
+            LightBottomBar(
+                items = listOf(
+                    LightBarButton.Text(
+                        text = "MANUAL",
+                        onClick = { viewModel.goToStep(SetupStep.ManualEntry) },
+                    ),
+                    LightBarButton.Text(
+                        text = "SCAN QR",
+                        onClick = { viewModel.showQrScanner() },
+                    ),
+                ),
+            )
+        }
+    }
+
+    // ── Manual Entry (form only, editor is at Content level) ──
+
+    @Composable
+    private fun ManualEntryContent(state: SetupUiState) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            LightTopBar(
+                leftButton = LightBarButton.LightIcon(
+                    icon = LightIcons.BACK,
+                    onClick = { viewModel.goToStep(SetupStep.Welcome) },
+                ),
+                center = LightTopBarCenter.Text("Credentials"),
+                modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+            )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 1f.gridUnitsAsDp()),
+            ) {
                 LightText(
-                    text = "Tesla Control Setup",
-                    variant = LightTextVariant.Title,
+                    text = "Instructions at tesla-lightphone.app/setup",
+                    variant = LightTextVariant.Fine,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
-                LightText(
-                    text = "Set up your credentials on a computer, then scan the QR code here to sign in.",
-                    variant = LightTextVariant.Copy,
-                    modifier = Modifier.fillMaxWidth(),
+
+                LightTextField(
+                    label = "Client ID",
+                    value = state.manualClientId,
+                    placeholder = "Tap to enter",
+                    onClick = { viewModel.startEditing(EditingField.ClientId) },
                 )
-                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
-                LightText(
-                    text = "1. On a computer, go to\ntesla-lightphone.app/setup",
-                    variant = LightTextVariant.Copy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(0.5f.gridUnitsAsDp()))
-                LightText(
-                    text = "2. Follow the steps to create your Tesla developer app",
-                    variant = LightTextVariant.Copy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(0.5f.gridUnitsAsDp()))
-                LightText(
-                    text = "3. Enter your credentials and scan the QR code it shows",
-                    variant = LightTextVariant.Copy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
-                LightText(
-                    text = "After scanning, you'll sign in to Tesla directly on this phone.",
-                    variant = LightTextVariant.Detail,
-                    modifier = Modifier.fillMaxWidth(),
+
+                LightTextField(
+                    label = "Client Secret",
+                    value = state.manualClientSecret,
+                    placeholder = "Tap to enter",
+                    onClick = { viewModel.startEditing(EditingField.ClientSecret) },
                 )
             }
 
@@ -149,8 +223,8 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                 items = listOf(
                     null,
                     LightBarButton.Text(
-                        text = "SCAN QR CODE",
-                        onClick = { viewModel.showQrScanner() },
+                        text = "CONTINUE",
+                        onClick = { viewModel.submitManualCredentials() },
                     ),
                     null,
                 ),
@@ -158,91 +232,105 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
         }
     }
 
-    // ── Sign In: full-screen WebView for Tesla OAuth ────
+    // ── Sign In: WebView with back button ───────────────
 
     @SuppressLint("SetJavaScriptEnabled")
     @Composable
     private fun SignInContent(state: SetupUiState) {
         val oauthUrl = state.oauthUrl ?: return
 
-        // Full-screen WebView — no title, no header, no bottom bar.
-        // This gives maximum room for the Tesla sign-in page
-        // so the user can scroll to all fields and the keyboard
-        // doesn't block the inputs.
-        AndroidView(
-            factory = { context ->
-                // Enable cookies for Tesla auth session
-                CookieManager.getInstance().setAcceptCookie(true)
+        Column(modifier = Modifier.fillMaxSize()) {
+            LightTopBar(
+                leftButton = LightBarButton.LightIcon(
+                    icon = LightIcons.BACK,
+                    onClick = { viewModel.cancelSignIn() },
+                ),
+                center = LightTopBarCenter.Text("Sign In"),
+                modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+            )
 
-                WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.setSupportZoom(true)
-                    settings.builtInZoomControls = true
-                    settings.displayZoomControls = false
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
+            // Show "Loading..." while WebView is rendering (prevents black screen)
+            LightText(
+                text = "Loading Tesla sign-in...",
+                variant = LightTextVariant.Fine,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 1f.gridUnitsAsDp()),
+            )
 
-                    // Ensure the WebView can receive focus for keyboard input
-                    isFocusable = true
-                    isFocusableInTouchMode = true
-                    requestFocus()
+            AndroidView(
+                factory = { context ->
+                    // Clear old cookies/sessions so a retry with corrected
+                    // credentials isn't rejected by stale auth state.
+                    val cookieManager = CookieManager.getInstance()
+                    cookieManager.setAcceptCookie(true)
+                    cookieManager.removeAllCookies(null)
+                    cookieManager.flush()
 
-                    // Accept third-party cookies (needed for Tesla OAuth)
-                    CookieManager.getInstance()
-                        .setAcceptThirdPartyCookies(this, true)
+                    WebView(context).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.setSupportZoom(true)
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        isFocusable = true
+                        isFocusableInTouchMode = true
+                        requestFocus()
 
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(
-                            view: WebView?,
-                            request: WebResourceRequest?,
-                        ): Boolean {
-                            val url = request?.url?.toString() ?: return false
-                            // Intercept redirect to our domain
-                            if (url.startsWith(CredentialStore.REDIRECT_URI)) {
-                                val uri = request.url
-                                val code = uri.getQueryParameter("code")
-                                if (code != null) {
-                                    viewModel.onOAuthCodeReceived(code)
-                                } else {
-                                    val error =
-                                        uri.getQueryParameter("error_description")
-                                            ?: uri.getQueryParameter("error")
-                                            ?: "Sign-in was not completed"
-                                    viewModel.onOAuthError(error)
+                        cookieManager.setAcceptThirdPartyCookies(this, true)
+
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                            ): Boolean {
+                                val url = request?.url?.toString() ?: return false
+                                if (url.startsWith(CredentialStore.REDIRECT_URI)) {
+                                    val uri = request.url
+                                    val code = uri.getQueryParameter("code")
+                                    if (code != null) {
+                                        viewModel.onOAuthCodeReceived(code)
+                                    } else {
+                                        val error =
+                                            uri.getQueryParameter("error_description")
+                                                ?: uri.getQueryParameter("error")
+                                                ?: "Sign-in was not completed"
+                                        viewModel.onOAuthError(error)
+                                    }
+                                    return true
                                 }
-                                return true
+                                return false
                             }
-                            return false
                         }
-                    }
 
-                    loadUrl(oauthUrl)
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
+                        loadUrl(oauthUrl)
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            )
+        }
     }
 
-    // ── Processing: exchanging tokens ───────────────────
+    // ── Processing ──────────────────────────────────────
 
     @Composable
     private fun ProcessingContent(state: SetupUiState) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 1f.gridUnitsAsDp()),
-        ) {
-            LightTopBar(center = LightTopBarCenter.Text("Setup"))
+        Column(modifier = Modifier.fillMaxSize()) {
+            LightTopBar(
+                center = LightTopBarCenter.Text("Setup"),
+                modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+            )
 
-            LightScrollView(modifier = Modifier.weight(1f)) {
-                Spacer(modifier = Modifier.height(2f.gridUnitsAsDp()))
-
-                LightText(
-                    text = "Setting up...",
-                    variant = LightTextVariant.Title,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 1f.gridUnitsAsDp()),
+            ) {
                 Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
 
                 for (line in state.statusMessages) {
@@ -254,24 +342,15 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                             .padding(vertical = 0.25f.gridUnitsAsDp()),
                     )
                 }
-
-                if (state.isLoading) {
-                    Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
-                    LightText(
-                        text = "This takes a few seconds.",
-                        variant = LightTextVariant.Fine,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
             }
 
-            if (!state.isLoading && state.errorModal != null) {
+            if (!state.isLoading) {
                 LightBottomBar(
                     items = listOf(
                         null,
                         LightBarButton.Text(
                             text = "TRY AGAIN",
-                            onClick = { viewModel.goToStep(SetupStep.Welcome) },
+                            onClick = { viewModel.goToStep(SetupStep.ManualEntry) },
                         ),
                         null,
                     ),
@@ -284,21 +363,18 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
 
     @Composable
     private fun DoneContent() {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 1f.gridUnitsAsDp()),
-        ) {
-            LightTopBar(center = LightTopBarCenter.Text("Done"))
+        Column(modifier = Modifier.fillMaxSize()) {
+            LightTopBar(
+                center = LightTopBarCenter.Text("Setup"),
+                modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+            )
 
-            LightScrollView(modifier = Modifier.weight(1f)) {
-                Spacer(modifier = Modifier.height(2f.gridUnitsAsDp()))
-
-                LightText(
-                    text = "Setup Complete!",
-                    variant = LightTextVariant.Title,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 1f.gridUnitsAsDp()),
+            ) {
                 Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
                 LightText(
                     text = "Your Tesla is connected.",

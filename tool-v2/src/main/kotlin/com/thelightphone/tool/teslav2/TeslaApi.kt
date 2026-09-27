@@ -178,6 +178,12 @@ class TeslaApi(
         code: String,
         codeVerifier: String,
     ): Result<String> = withContext(Dispatchers.IO) {
+        android.util.Log.i("SetupWizard", "Token exchange: client_id length=${CLIENT_ID.length} first4=${CLIENT_ID.take(4)} last4=${CLIENT_ID.takeLast(4)}")
+        android.util.Log.i("SetupWizard", "Token exchange: secret length=${CLIENT_SECRET.length} first4=${CLIENT_SECRET.take(4)} last4=${CLIENT_SECRET.takeLast(4)}")
+        android.util.Log.i("SetupWizard", "Token exchange: secret hex=${CLIENT_SECRET.toByteArray(Charsets.UTF_8).joinToString("") { "%02x".format(it) }}")
+        android.util.Log.i("SetupWizard", "Token exchange: code_verifier length=${codeVerifier.length} first4=${codeVerifier.take(4)} last4=${codeVerifier.takeLast(4)}")
+        android.util.Log.i("SetupWizard", "Token exchange: redirect_uri=$REDIRECT_URI")
+
         val body = FormBody.Builder()
             .add("grant_type", "authorization_code")
             .add("client_id", CLIENT_ID)
@@ -185,6 +191,7 @@ class TeslaApi(
             .add("code", code)
             .add("code_verifier", codeVerifier)
             .add("redirect_uri", REDIRECT_URI)
+            .add("audience", FLEET_URL)
             .build()
 
         val request = Request.Builder()
