@@ -123,6 +123,7 @@ class SettingsScreen(sealedActivity: SealedLightActivity) :
                             LightText(
                                 text = "Disconnect",
                                 variant = LightTextVariant.Copy,
+                                align = TextAlign.End,
                                 modifier = Modifier
                                     .weight(1f)
                                     .lightClickable(onClick = {
