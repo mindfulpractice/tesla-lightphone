@@ -22,6 +22,7 @@ enum class SetupStep {
     ManualEntry,
     SignIn,
     Processing,
+    KeyPairing,
     Done,
 }
 
@@ -368,19 +369,17 @@ class SetupWizardViewModel(
                             vehicle.displayName ?: "My Tesla",
                         )
                     }
-                    credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
                         _uiState.update {
-                            it.copy(isLoading = false, step = SetupStep.Done)
+                            it.copy(isLoading = false, step = SetupStep.KeyPairing)
                         }
                     }
                 },
                 onFailure = { error ->
                     Log.w("SetupWizard", "Vehicle fetch failed: ${error.message}")
-                    credentialStore.markSetupComplete()
                     withContext(Dispatchers.Main) {
                         _uiState.update {
-                            it.copy(isLoading = false, step = SetupStep.Done)
+                            it.copy(isLoading = false, step = SetupStep.KeyPairing)
                         }
                     }
                 },
@@ -389,6 +388,11 @@ class SetupWizardViewModel(
     }
 
     // ── Done ────────────────────────────────────────────
+
+    fun keyPairingDone() {
+        credentialStore.markSetupComplete()
+        _uiState.update { it.copy(step = SetupStep.Done) }
+    }
 
     fun finishSetup() {
         _uiState.update { it.copy(setupComplete = true) }

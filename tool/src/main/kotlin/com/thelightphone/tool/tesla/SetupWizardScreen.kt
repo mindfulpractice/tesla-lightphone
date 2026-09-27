@@ -122,6 +122,7 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                         SetupStep.ManualEntry -> ManualEntryContent(state)
                         SetupStep.SignIn -> SignInContent(state)
                         SetupStep.Processing -> ProcessingContent(state)
+                        SetupStep.KeyPairing -> KeyPairingContent()
                         SetupStep.Done -> DoneContent()
                     }
                 }
@@ -364,6 +365,76 @@ class SetupWizardScreen(sealedActivity: SealedLightActivity) :
                     ),
                 )
             }
+        }
+    }
+
+
+    // ── Key Pairing: enroll public key on vehicle ───────
+
+    @SuppressLint("SetJavaScriptEnabled")
+    @Composable
+    private fun KeyPairingContent() {
+        val webViewLoading = remember { mutableStateOf(true) }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            LightTopBar(
+                center = LightTopBarCenter.Text("Pair Key"),
+                modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+            )
+
+            if (webViewLoading.value) {
+                LightText(
+                    text = "Loading key pairing...",
+                    variant = LightTextVariant.Fine,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 1f.gridUnitsAsDp()),
+                )
+            }
+
+            AndroidView(
+                factory = { context ->
+                    val cookieManager = CookieManager.getInstance()
+                    cookieManager.setAcceptCookie(true)
+
+                    WebView(context).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.setSupportZoom(true)
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        isFocusable = true
+                        isFocusableInTouchMode = true
+                        requestFocus()
+
+                        cookieManager.setAcceptThirdPartyCookies(this, true)
+
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                webViewLoading.value = false
+                            }
+                        }
+
+                        loadUrl("https://tesla.com/_ak/" + CredentialStore.DOMAIN)
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            )
+
+            LightBottomBar(
+                items = listOf(
+                    null,
+                    LightBarButton.Text(
+                        text = "CONTINUE",
+                        onClick = { viewModel.keyPairingDone() },
+                    ),
+                    null,
+                ),
+            )
         }
     }
 
