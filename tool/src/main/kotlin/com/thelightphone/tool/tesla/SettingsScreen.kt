@@ -28,7 +28,6 @@ import com.thelightphone.sdk.ui.LightIcons
 import com.thelightphone.sdk.ui.LightScrollView
 import androidx.compose.ui.text.style.TextAlign
 import com.thelightphone.sdk.ui.LightText
-import androidx.compose.ui.text.style.TextAlign
 import com.thelightphone.sdk.ui.LightTextVariant
 import com.thelightphone.sdk.ui.LightTheme
 import com.thelightphone.sdk.ui.LightThemeController
