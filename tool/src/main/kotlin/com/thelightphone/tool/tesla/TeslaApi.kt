@@ -1,7 +1,6 @@
 package com.thelightphone.tool.tesla
 
 import android.util.Base64
-import com.thelightphone.tool.tesla.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -26,15 +25,17 @@ import java.util.concurrent.TimeUnit
  */
 class TeslaApi(
     private val tokenStore: TokenStore,
+    private val credentialStore: CredentialStore,
 ) {
     companion object {
-        private const val FLEET_URL = "https://fleet-api.prd.na.vn.cloud.tesla.com"
+        const val FLEET_URL = "https://fleet-api.prd.na.vn.cloud.tesla.com"
         private const val AUTH_URL = "https://auth.tesla.com/oauth2/v3/token"
-
-        val CLIENT_ID: String = BuildConfig.TESLA_CLIENT_ID
-        val CLIENT_SECRET: String = BuildConfig.TESLA_CLIENT_SECRET
-        val REDIRECT_URI: String = BuildConfig.TESLA_REDIRECT_URI
     }
+
+    // Credentials read from on-device encrypted storage (set by user in setup wizard)
+    private val CLIENT_ID: String get() = credentialStore.getClientId() ?: ""
+    private val CLIENT_SECRET: String get() = credentialStore.getClientSecret() ?: ""
+    private val REDIRECT_URI: String get() = credentialStore.getRedirectUri()
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -177,6 +178,8 @@ class TeslaApi(
         code: String,
         codeVerifier: String,
     ): Result<String> = withContext(Dispatchers.IO) {
+        android.util.Log.i("SetupWizard", "Token exchange: secret hex=${CLIENT_SECRET.toByteArray(Charsets.UTF_8).joinToString("") { "%02x".format(it) }}")
+
         val body = FormBody.Builder()
             .add("grant_type", "authorization_code")
             .add("client_id", CLIENT_ID)
@@ -184,6 +187,7 @@ class TeslaApi(
             .add("code", code)
             .add("code_verifier", codeVerifier)
             .add("redirect_uri", REDIRECT_URI)
+            .add("audience", FLEET_URL)
             .build()
 
         val request = Request.Builder()
@@ -775,6 +779,78 @@ class TeslaApi(
     suspend fun honkHorn(vin: String) = sendSignedCommand(vin, TeslaCommand.HonkHorn)
     suspend fun ventWindows(vin: String) = sendSignedCommand(vin, TeslaCommand.VentWindows)
     suspend fun closeWindows(vin: String) = sendSignedCommand(vin, TeslaCommand.CloseWindows)
+
+    // ── Partner registration (automated in setup wizard) ─────
+
+    /**
+     * Get a partner authentication token from Tesla.
+     * This is a special token scoped to partner management, not user data.
+     */
+    suspend fun getPartnerToken(): Result<String> = withContext(Dispatchers.IO) {
+        val body = FormBody.Builder()
+            .add("grant_type", "client_credentials")
+            .add("client_id", CLIENT_ID)
+            .add("client_secret", CLIENT_SECRET)
+            .add("scope", "openid vehicle_device_data vehicle_cmds vehicle_charging_cmds")
+            .add("audience", FLEET_URL)
+            .build()
+
+        val request = Request.Builder()
+            .url(AUTH_URL)
+            .post(body)
+            .build()
+
+        try {
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(
+                    Exception("Partner auth failed (${response.code}): $responseBody")
+                )
+            }
+
+            val tokenResponse = json.decodeFromString<TokenResponse>(responseBody)
+            Result.success(tokenResponse.accessToken)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Register the app's domain with Tesla using a partner token.
+     * This tells Tesla to look for our public key at our domain.
+     */
+    suspend fun registerDomain(partnerToken: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val domain = CredentialStore.DOMAIN
+        val jsonBody = """{"domain":"$domain"}"""
+
+        val request = Request.Builder()
+            .url("$FLEET_URL/api/1/partner_accounts")
+            .header("Authorization", "Bearer $partnerToken")
+            .header("Content-Type", "application/json")
+            .post(jsonBody.toRequestBody("application/json".toMediaType()))
+            .build()
+
+        try {
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                // 409 = already registered, which is fine
+                if (response.code == 409) {
+                    return@withContext Result.success(Unit)
+                }
+                return@withContext Result.failure(
+                    Exception("Domain registration failed (${response.code}): $responseBody")
+                )
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 }
 
 // ── Data models ──────────────────────────────────────────

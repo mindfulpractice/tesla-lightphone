@@ -1,4 +1,4 @@
-package com.thelightphone.tool.teslav2
+package com.thelightphone.tool.tesla
 
 import java.io.File
 import org.json.JSONObject

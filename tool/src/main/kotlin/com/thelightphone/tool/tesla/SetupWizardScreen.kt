@@ -1,4 +1,4 @@
-package com.thelightphone.tool.teslav2
+package com.thelightphone.tool.tesla
 
 import android.annotation.SuppressLint
 import android.webkit.CookieManager

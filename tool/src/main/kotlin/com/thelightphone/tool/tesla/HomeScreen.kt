@@ -44,41 +44,21 @@ class HomeScreen(sealedActivity: SealedLightActivity) :
         get() = HomeScreenViewModel::class.java
 
     override fun createViewModel(): HomeScreenViewModel {
+        val credentialStore = CredentialStore(lightContext.filesDir)
         val tokenStore = TokenStore(lightContext.dataStore)
-        val api = TeslaApi(tokenStore)
+        val api = TeslaApi(tokenStore, credentialStore)
 
-        // Load or generate VCP key pair
+        // Load shared VCP key pair from assets (Option A — all users share one key)
         try {
-            val privKeyFile = java.io.File(lightContext.filesDir, "tesla_private_key.pem")
-            val pubKeyFile = java.io.File(lightContext.filesDir, "tesla_public_key.pem")
-
-            if (!privKeyFile.exists() || !pubKeyFile.exists()) {
-                // Generate a new EC P-256 key pair on first launch
-                val kpg = java.security.KeyPairGenerator.getInstance("EC")
-                kpg.initialize(java.security.spec.ECGenParameterSpec("secp256r1"))
-                val kp = kpg.generateKeyPair()
-
-                val privPem = "-----BEGIN PRIVATE KEY-----\n" +
-                    android.util.Base64.encodeToString(kp.private.encoded, android.util.Base64.NO_WRAP)
-                        .chunked(64).joinToString("\n") +
-                    "\n-----END PRIVATE KEY-----\n"
-                val pubPem = "-----BEGIN PUBLIC KEY-----\n" +
-                    android.util.Base64.encodeToString(kp.public.encoded, android.util.Base64.NO_WRAP)
-                        .chunked(64).joinToString("\n") +
-                    "\n-----END PUBLIC KEY-----\n"
-
-                privKeyFile.writeText(privPem)
-                pubKeyFile.writeText(pubPem)
-                android.util.Log.i("HomeScreen", "Generated new VCP key pair")
-            }
-
-            api.loadKeyPair(privKeyFile.readBytes(), pubKeyFile.readBytes())
+            val privKeyBytes = lightContext.readAsset("tesla_private_key.pem")
+            val pubKeyBytes = lightContext.readAsset("tesla_public_key.pem")
+            api.loadKeyPair(privKeyBytes, pubKeyBytes)
             api.resetSessions()
         } catch (e: Exception) {
-            android.util.Log.e("HomeScreen", "Failed to load/generate VCP keys: ${e.message}")
+            android.util.Log.e("HomeScreen", "Failed to load VCP keys from assets: ${e.message}")
         }
 
-        return HomeScreenViewModel(tokenStore, api)
+        return HomeScreenViewModel(tokenStore, api, credentialStore)
     }
 
     @Composable
@@ -96,7 +76,7 @@ class HomeScreen(sealedActivity: SealedLightActivity) :
                     is TeslaScreenMode.NeedsSetup -> {
                         SetupPromptContent(
                             onSetup = {
-                                navigateTo(::TokenSetupScreen) { result ->
+                                navigateTo(::SetupWizardScreen) { result ->
                                     if (result == true) {
                                         viewModel.onTokenSaved()
                                     }
@@ -164,20 +144,7 @@ private fun SetupPromptContent(onSetup: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(1f.gridUnitsAsDp()))
             LightText(
-                text = "On another device, visit:",
-                variant = LightTextVariant.Fine,
-            )
-            Spacer(modifier = Modifier.height(0.5f.gridUnitsAsDp()))
-            LightText(
-                text = BuildConfig.TESLA_REDIRECT_URI
-                    .removePrefix("https://").removePrefix("http://").trimEnd('/'),
-                variant = LightTextVariant.Copy,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 0.75f.gridUnitsAsDp()),
-            )
-            LightText(
-                text = "Sign in with Tesla, then scan the QR code.",
+                text = "Tap below to begin setup. You\'ll need a Tesla developer account and your car nearby.",
                 variant = LightTextVariant.Fine,
             )
         }
@@ -186,7 +153,7 @@ private fun SetupPromptContent(onSetup: () -> Unit) {
             items = listOf(
                 null,
                 LightBarButton.Text(
-                    text = "SCAN QR CODE",
+                    text = "START SETUP",
                     onClick = onSetup,
                 ),
                 null,

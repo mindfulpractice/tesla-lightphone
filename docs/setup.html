@@ -171,7 +171,11 @@
         <!-- Why a developer account? -->
         <div class="intro">
             <h2>Why do I need a developer account?</h2>
-            <p>Tesla requires all third-party apps to connect through their official API using a personal developer account. This means your credentials are yours alone — no one else has access to your Tesla through this app. It takes about 5 minutes to set up.</p>
+            <p>This app connects to your Tesla through Tesla's official API — but instead of routing through someone else's server, you use your own developer credentials. This means:</p>
+            <p><strong>Privacy</strong> — Your Tesla account is never shared with a third party. The connection is directly between your phone and Tesla.</p>
+            <p><strong>No costs to anyone</strong> — Tesla gives every developer account a free monthly allowance of API calls. Your personal usage will stay well within that limit, so there's nothing to pay.</p>
+            <p><strong>Full control</strong> — You can revoke access or delete your developer app at any time from developer.tesla.com.</p>
+            <p>Setup takes about 5 minutes.</p>
         </div>
 
         <!-- How to get credentials onto your phone -->
@@ -192,8 +196,9 @@
             <ul class="checklist">
                 <li>Allowed Origin: <code>https://tesla-lightphone.app</code></li>
                 <li>Allowed Redirect URI: <code>https://tesla-lightphone.app/setup</code></li>
-                <li>API Scopes: select <strong>Vehicle Commands</strong>, <strong>Vehicle Charging Management</strong>, and <strong>Vehicle Device Data</strong></li>
+                <li>API Scopes: select <strong>Vehicle Information</strong> and <strong>Vehicle Commands</strong></li>
             </ul>
+            <p>The Origin and Redirect URI tell Tesla which app is allowed to connect. They must match exactly — Tesla uses them to verify the sign-in request is coming from this app.</p>
             <p>Copy your <strong>Client ID</strong> and <strong>Client Secret</strong> from the app dashboard.</p>
             <span class="toggle-link" onclick="toggleDetails('details1')">Need more detail?</span>
             <div class="collapsible-details" id="details1">
@@ -201,7 +206,7 @@
                 2. Click "Create Application".<br>
                 3. Fill in any name and description (these are for your reference).<br>
                 4. Set the Origin and Redirect URI exactly as shown above.<br>
-                5. Under API scopes, check the three boxes listed above.<br>
+                5. Under API scopes, check the two boxes listed above.<br>
                 6. Submit the application. It may take a few minutes to be approved.<br>
                 7. Once approved, copy the Client ID and Client Secret.</p>
             </div>

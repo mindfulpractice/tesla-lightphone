@@ -1,4 +1,4 @@
-package com.thelightphone.tool.teslav2
+package com.thelightphone.tool.tesla
 
 import android.util.Base64
 import android.util.Log
@@ -192,9 +192,6 @@ class SetupWizardViewModel(
             return
         }
 
-        Log.i("SetupWizard", "Client ID length=${id.length}, first4=${id.take(4)}, last4=${id.takeLast(4)}")
-        Log.i("SetupWizard", "Client Secret length=${secret.length}")
-
         credentialStore.saveClientId(id)
         credentialStore.saveClientSecret(secret)
         Log.i("SetupWizard", "Credentials saved from manual entry")
@@ -208,11 +205,9 @@ class SetupWizardViewModel(
     private fun startOAuthFlow(clientId: String) {
         val verifier = generateCodeVerifier()
         codeVerifier = verifier
-        Log.i("SetupWizard", "PKCE verifier generated: first4=${verifier.take(4)} last4=${verifier.takeLast(4)} len=${verifier.length}")
+        Log.i("SetupWizard", "PKCE verifier generated")
         val challenge = generateCodeChallenge(verifier)
         val url = buildOAuthUrl(clientId, challenge)
-
-        Log.i("SetupWizard", "OAuth URL: $url")
 
         _uiState.update {
             it.copy(
@@ -227,7 +222,7 @@ class SetupWizardViewModel(
     /** Called when the WebView intercepts the redirect with an auth code. */
     fun onOAuthCodeReceived(code: String) {
         val verifier = codeVerifier
-        Log.i("SetupWizard", "onOAuthCodeReceived: code first8=${code.take(8)} verifier=${if (verifier != null) "first4=${verifier.take(4)} last4=${verifier.takeLast(4)}" else "NULL"}")
+        Log.i("SetupWizard", "OAuth code received")
         if (verifier == null) {
             _uiState.update {
                 it.copy(
@@ -303,7 +298,7 @@ class SetupWizardViewModel(
             "response_type" to "code",
             "client_id" to clientId,
             "redirect_uri" to CredentialStore.REDIRECT_URI,
-            "scope" to "openid offline_access vehicle_device_data vehicle_cmds vehicle_charging_cmds",
+            "scope" to "openid offline_access vehicle_device_data vehicle_cmds",
             "state" to UUID.randomUUID().toString(),
             "code_challenge" to codeChallenge,
             "code_challenge_method" to "S256",
